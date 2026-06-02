@@ -100,7 +100,7 @@ un único ADR de cobertura del guard.
 
 ## DEBT-0004 — Auditor lee la fila completa de `users` (PII), no solo labels
 
-- **Estado:** abierta
+- **Estado:** ✅ CERRADA (ADR-0005, 2026-06-02) — auditor usa la vista `users_labels`; sin SELECT sobre `users` cruda
 - **Fecha de registro:** 2026-06-02
 - **Decisor (asumir como deuda):** Nicolas (humano)
 - **Registró:** Orquestador (Claude Cowork)
