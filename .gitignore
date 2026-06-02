@@ -1,0 +1,59 @@
+# ──────────────────────────────────────────────────────────────
+# Royal Control — .gitignore
+# Prioridad #1: que un SECRETO nunca entre al repo.
+# El modelo de seguridad del producto es la RLS de Postgres
+# (docs/DATA_MODEL.md §7). La service_role key de Supabase se salta
+# la RLS y anula el aislamiento por distribución → filtrarla es crítico.
+# Stack: Next.js + Supabase + Vercel (ADR-0001).
+# NOTA: este archivo NO ignora docs/**, .ai/** ni .github/** (gobernanza versionada).
+# ──────────────────────────────────────────────────────────────
+
+# --- Secretos / variables de entorno ---
+.env
+.env.*
+!.env.example
+
+# --- Dependencias ---
+node_modules/
+
+# --- Build / output (Next.js) ---
+.next/
+out/
+build/
+dist/
+next-env.d.ts
+*.tsbuildinfo
+
+# --- Tests / coverage ---
+coverage/
+
+# --- Supabase (CLI local) ---
+supabase/.temp/
+supabase/.branches/
+.branches
+.temp
+
+# --- Deploy (Vercel CLI) ---
+.vercel
+
+# --- Logs ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# --- OS / sistema ---
+.DS_Store
+Thumbs.db
+
+# --- Editor / IDE ---
+*.swp
+*.swo
+.idea/
+# .vscode: ignora el ruido local pero permite versionar settings compartidos
+# si el equipo decide añadirlos (hoy no existe .vscode/ en el repo).
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
