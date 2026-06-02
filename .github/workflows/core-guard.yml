@@ -9,7 +9,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   push:
-    branches: ['**']
+    # Solo main: el push directo/ff a main queda guardado (before = tip real). Los branches
+    # nuevos comparaban contra árbol vacío → falso positivo; sus cambios al core se validan al
+    # mergear vía pull_request. (ADR-0004 / DEBT-0001 ítem 2.)
+    branches: [main]
 
 jobs:
   guard:

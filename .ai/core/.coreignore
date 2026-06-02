@@ -4,8 +4,9 @@
 # Una ruta por línea. Soporta globs estilo gitignore.
 
 # --- Modelo de datos (la verdad) ---
-db/schema.sql
-db/migrations/0000_*
+# El schema vive en migraciones (db/migrations/0000_init.sql), no en db/schema.sql.
+# Se protege el directorio de migraciones COMPLETO — toda migración futura, no solo 0000_* (ADR-0004 / DEBT-0003).
+db/migrations/
 db/seed/roles.sql
 
 # --- Seguridad y control de acceso ---
@@ -23,5 +24,9 @@ lib/calendar/sync-core.ts
 core/
 
 # --- Configuración crítica de build/infra ---
-next.config.mjs
+# next.config.* cubre .mjs/.ts/.js (un rename no esquiva el guard) (ADR-0004 / DEBT-0002).
+next.config.*
 middleware.ts
+
+# --- Autoprotección del guard (ADR-0004 / DEBT-0001 ítem 3) ---
+.github/workflows/core-guard.yml

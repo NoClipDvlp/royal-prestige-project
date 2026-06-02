@@ -9,7 +9,7 @@
 
 ## DEBT-0001 — Enforcement de core-guard inoperante
 
-- **Estado:** abierta
+- **Estado:** parcialmente cerrada — ítems 2 y 3 CERRADOS por ADR-0004; queda abierto solo el ítem 1 (billing)
 - **Fecha de registro:** 2026-06-02
 - **Decisor (asumir como deuda):** Nicolas (humano)
 - **Registró:** Orquestador (Claude Cowork)
@@ -28,8 +28,8 @@ el núcleo; nada físico lo frena.
 | # | Ítem | Severidad | DRI | Condición de salida |
 |---|---|---|---|---|
 | 1 | Billing de GitHub Actions bloqueado (`account is locked`) → core-guard no corre en ningún evento | Alta | Nicolas | Desbloquear billing en cuenta/org NoClipDvlp → el check arranca |
-| 2 | `push`-trigger da falso positivo en branches nuevos (compara contra árbol vacío → marca `.ai/**` en falso) | Media | Agente (prepara fix) | Narrow `push: branches: ['**']` → `[main]`; ADR + PR separado; verde tras billing |
-| 3 | `core-guard.yml` no se autoprotege (no está en `.coreignore`) → editable para neutralizarlo sin freno | Media | Nicolas (aprobación core) | Meter el workflow en `.coreignore`; requiere ADR + commit `[CORE-APPROVED]` |
+| 2 | ✅ **CERRADO (ADR-0004)** — el `push`-trigger daba falso positivo en branches nuevos | Media | Agente | Hecho: `push: branches: ['**']` → `[main]` |
+| 3 | ✅ **CERRADO (ADR-0004)** — `core-guard.yml` no se autoprotegía | Media | Nicolas | Hecho: workflow añadido a `.coreignore` (commit `[CORE-APPROVED: ADR-0004]`) |
 
 ### Impacto mientras la deuda esté abierta
 
@@ -41,9 +41,9 @@ el núcleo; nada físico lo frena.
 
 ### Criterio de cierre de la deuda completa
 
-Los 3 ítems verdes: billing activo, `core-guard` corriendo y pasando en verde sobre un PR
-real, y el propio workflow protegido en `.coreignore`. Al cerrarse, el score de gobernanza
-vuelve a ≥4.6.
+Ítems 2 y 3 cerrados por ADR-0004 (trigger arreglado + workflow autoprotegido en `.coreignore`).
+Queda **solo el ítem 1 (billing)**: al desbloquearse, `core-guard` correrá y pasará en verde sobre
+un PR real → ahí DEBT-0001 cierra completa y el score de gobernanza vuelve a ≥4.6.
 
 ### Trazabilidad
 
@@ -54,7 +54,7 @@ vuelve a ≥4.6.
 
 ## DEBT-0002 — `.coreignore` protege `next.config.mjs` pero no `next.config.ts|js`
 
-- **Estado:** abierta
+- **Estado:** ✅ CERRADA (ADR-0004, 2026-06-02) — `next.config.*` añadido a `.coreignore`
 - **Fecha de registro:** 2026-06-02
 - **Decisor (asumir como deuda):** Nicolas (humano)
 - **Registró:** Orquestador (Claude Cowork)
@@ -77,7 +77,7 @@ requiere ADR + aprobación de Nicolas + commit `[CORE-APPROVED]`. Se agrupa con 
 
 ## DEBT-0003 — El guard solo protege migraciones 0000_*, no las futuras (0001+)
 
-- **Estado:** abierta
+- **Estado:** ✅ CERRADA (ADR-0004, 2026-06-02) — `.coreignore` ampliado a `db/migrations/`
 - **Fecha de registro:** 2026-06-02
 - **Decisor (asumir como deuda):** Nicolas (humano)
 - **Registró:** Orquestador (Claude Cowork)
