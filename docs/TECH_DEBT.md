@@ -119,3 +119,28 @@ acceso del auditor a esa vista y quitarle el SELECT sobre la tabla `users` cruda
 
 ### Trazabilidad
 - Relaciona: `ADR-0003`, `lib/rls-policies/policies.sql`, `docs/DATA_MODEL.md`, `DEBT-0001`
+
+---
+
+## DEBT-0005 — Repo en drive sincronizado (iCloud/Dropbox) — riesgo de corrupción de `.git`
+
+- **Estado:** abierta (riesgo ASUMIDO por Nicolas, 2026-06-02)
+- **Fecha de registro:** 2026-06-02
+- **Decisor (asumir como deuda):** Nicolas (humano) — decidió dejarlo y asumir el riesgo.
+- **Registró:** Orquestador (Claude Cowork)
+- **Severidad global:** alta — incidente materializado (logo casi perdido); riesgo de corrupción de `.git`.
+
+### Contexto
+El repo vive en una carpeta sincronizada. Ha causado: `index.lock` huérfano, `tsconfig` fantasma,
+duplicados `.d 2.ts`, y el logo guardado como `:royal-prestige-logo.png` (recuperado del object-store
+de git). Un repo git en sync puede corromper `.git` en una race, potencialmente irrecuperable en local.
+
+### Mitigación activa (obligatoria mientras la deuda esté abierta)
+Push a `origin` DESPUÉS DE CADA HITO, sin excepción → `origin` es la verdad recuperable; si el sync
+corrompe el local, se re-clona. El working tree local se trata como desechable.
+
+### Condición de salida
+Mover / re-clonar el repo a una ruta local NO sincronizada.
+
+### Trazabilidad
+- Incidentes en Hitos 0–3. Relaciona: `DEBT-0001`
