@@ -40,9 +40,12 @@ create policy distributions_delete on distributions for delete
   using (auth.current_role() = 'admin');
 
 -- ============================ users ============================
--- SELECT: admin/auditor (labels) o la PROPIA fila (incluye role=null → única lectura permitida).
+-- SELECT: admin o la PROPIA fila (role=null incluido → única lectura permitida).
+-- El AUDITOR ya NO lee la tabla users cruda (PII): sus labels van por la vista users_labels
+-- (db/migrations/0001_auditor_labels.sql, ADR-0005 / DEBT-0004).
+-- (Snapshot de referencia; la verdad aplicable a una DB desplegada es la migración 0001.)
 create policy users_select on users for select using (
-  auth.current_role() in ('admin','auditor')
+  auth.current_role() = 'admin'
   or id = (select auth.uid())
 );
 -- INSERT: solo admin (alta de perfiles; el alta por signup la hace service_role/trigger).

@@ -37,8 +37,10 @@ run() { psql -v ON_ERROR_STOP=1 -X -q -d rc_test -f "$1"; }
 echo "== shim de auth ==";        run "$HERE/00_auth_shim.sql"
 echo "== schema 0000_init ==";    run "$ROOT/db/migrations/0000_init.sql"
 echo "== RLS policies ==";        run "$ROOT/lib/rls-policies/policies.sql"
+echo "== migración 0001 (auditor labels) =="; run "$ROOT/db/migrations/0001_auditor_labels.sql"
 echo "== seed roles ==";          run "$ROOT/db/seed/roles.sql"
 echo "== fixtures ==";            run "$HERE/10_fixtures.sql"
-echo "== tests de aislamiento =="; run "$HERE/20_isolation_tests.sql"
+echo "== tests de aislamiento (20) =="; run "$HERE/20_isolation_tests.sql"
+echo "== tests auditor labels (21) =="; run "$HERE/21_auditor_labels.sql"
 
 echo "RESULT=GREEN"
