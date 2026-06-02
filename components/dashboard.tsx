@@ -16,7 +16,7 @@ export function Dashboard() {
   const gap = density === "compact" ? "gap-3" : "gap-5";
 
   return (
-    <main className={cn("mx-auto flex w-full max-w-3xl flex-col px-4 pb-20 pt-6", gap)}>
+    <div className={cn("flex flex-col", gap)}>
       {/* Saludo + progreso hacia meta semanal */}
       <GlassCard className={pad}>
         <Greeting />
@@ -70,7 +70,7 @@ export function Dashboard() {
           <Input placeholder="Buscar tarea…" />
         </div>
       </GlassCard>
-    </main>
+    </div>
   );
 }
 

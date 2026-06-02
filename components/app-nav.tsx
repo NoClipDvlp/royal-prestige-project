@@ -1,0 +1,41 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { BarChart3, Home, ListTodo, Settings } from "lucide-react";
+import { cn } from "@/lib/cn";
+
+const tabs = [
+  { href: "/", label: "Inicio", icon: Home },
+  { href: "/tareas", label: "Tareas", icon: ListTodo },
+  { href: "/metricas", label: "Métricas", icon: BarChart3 },
+  { href: "/ajustes", label: "Ajustes", icon: Settings },
+] as const;
+
+/** Tab bar flotante estilo app (glass). Icono siempre; etiqueta visible en el activo / en ≥sm. */
+export function AppNav() {
+  const pathname = usePathname();
+  return (
+    <nav className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
+      <div className="glass flex items-center gap-1 rounded-full p-1.5">
+        {tabs.map(({ href, label, icon: Icon }) => {
+          const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-medium transition",
+                active ? "bg-accent text-accent-fg shadow-sm" : "text-muted hover:text-fg",
+              )}
+            >
+              <Icon size={18} />
+              <span className={cn(active ? "inline" : "hidden sm:inline")}>{label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
