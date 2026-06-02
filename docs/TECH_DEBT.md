@@ -48,4 +48,27 @@ vuelve a ≥4.6.
 ### Trazabilidad
 
 - Relaciona: `ADR-0001`, `.ai/core/CORE_MANIFEST.md`, `.github/workflows/core-guard.yml`
-- PR afectado: #1 (`chore: .gitignore + blindaje de secretos`, OPEN, no mergeado)
+- PR afectado: #1 (`chore: .gitignore + blindaje de secretos`, cerrado como superado por el Hito 0)
+
+---
+
+## DEBT-0002 — `.coreignore` protege `next.config.mjs` pero no `next.config.ts|js`
+
+- **Estado:** abierta
+- **Fecha de registro:** 2026-06-02
+- **Decisor (asumir como deuda):** Nicolas (humano)
+- **Registró:** Orquestador (Claude Cowork)
+- **Severidad global:** media — hueco de evasión del guard de core.
+
+### Contexto
+`.coreignore` protege la ruta exacta `next.config.mjs`. Next admite también `next.config.ts`
+y `next.config.js`. Un rename del archivo de config esquivaría `core-guard` sin marcador
+`[CORE-APPROVED]`. Detectado por el Agente durante el Hito 0 (ver ADR-0002).
+
+### Condición de salida
+Añadir `next.config.*` a `.coreignore`. Editar `.coreignore` está bajo `.ai/` → es core:
+requiere ADR + aprobación de Nicolas + commit `[CORE-APPROVED]`. Se agrupa con DEBT-0001
+ítem 3 (autoprotección del guard) para no abrir el flujo de core dos veces por temas afines.
+
+### Trazabilidad
+- Relaciona: `ADR-0002`, `.ai/core/.coreignore`, `.github/workflows/core-guard.yml`, `DEBT-0001`
