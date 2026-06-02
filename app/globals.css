@@ -1,7 +1,77 @@
 @import "tailwindcss";
 
-/*
- * Royal Control — estilos globales (Hito 0).
- * Tailwind v4 CSS-first: el tema (claro/oscuro, glassmorphism, tipografía premium)
- * se definirá aquí con @theme en el Hito de UI. Hito 0 no añade tema todavía.
- */
+/* Modo oscuro por CLASE (.dark la pone next-themes), no por prefers-color-scheme. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Tokens reactivos al tema: las CSS vars cambian en :root/.dark y @theme inline las
+   expone como utilidades (text-fg, bg-accent, …) que siguen al tema en runtime. */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-positive: var(--positive);
+  --radius-3xl: 1.5rem;
+}
+
+:root {
+  --bg: #eef1f8;
+  --bg-grad-1: #f4f6fc;
+  --bg-grad-2: #e7ebf6;
+  --bg-grad-3: #efe9f8;
+  --fg: #1b1f2e;
+  --muted: #6b7286;
+  --accent: #6d6cf0;            /* periwinkle apagado, premium */
+  --accent-fg: #ffffff;
+  --positive: #38a987;
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.78);   /* BORDE BLANCO (sin color) */
+  --glass-shadow: 0 12px 34px -14px rgba(28, 35, 71, 0.30), 0 2px 8px -3px rgba(28, 35, 71, 0.12);
+}
+
+.dark {
+  --bg: #0b0e15;
+  --bg-grad-1: #0d111a;
+  --bg-grad-2: #0a0d14;
+  --bg-grad-3: #14122024;
+  --fg: #eef1f8;
+  --muted: #99a0b3;
+  --accent: #8e8cf6;
+  --accent-fg: #0b0e15;
+  --positive: #4fc59a;
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.12);   /* borde blanco sutil en oscuro */
+  --glass-shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.65), 0 2px 10px -3px rgba(0, 0, 0, 0.5);
+}
+
+html, body { height: 100%; }
+
+body {
+  color: var(--fg);
+  background:
+    radial-gradient(1100px 560px at 82% -12%, var(--bg-grad-3), transparent 60%),
+    radial-gradient(900px 520px at -8% 6%, var(--bg-grad-1), transparent 58%),
+    linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
+  background-attachment: fixed;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Firma visual: tarjeta glass = borde BLANCO + sombra flotante + desenfoque. SIN bordes de color. */
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+
+/* Header estilo app iOS: barra translúcida pegajosa con blur y borde blanco inferior. */
+.ios-bar {
+  background: var(--glass-bg);
+  border-bottom: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  backdrop-filter: blur(22px) saturate(160%);
+}
