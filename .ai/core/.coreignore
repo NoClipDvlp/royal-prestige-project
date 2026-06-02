@@ -1,0 +1,27 @@
+# .coreignore — Rutas protegidas (núcleo intocable)
+# El check de CI (core-guard) bloquea cualquier cambio a estas rutas
+# salvo que el commit incluya el marcador [CORE-APPROVED: ADR-XXXX].
+# Una ruta por línea. Soporta globs estilo gitignore.
+
+# --- Modelo de datos (la verdad) ---
+db/schema.sql
+db/migrations/0000_*
+db/seed/roles.sql
+
+# --- Seguridad y control de acceso ---
+lib/auth/
+lib/rbac/
+lib/rls-policies/
+
+# --- Motor de sincronización de calendario ---
+lib/calendar/sync-core.ts
+
+# --- Gobernanza de IA (no auto-modificable) ---
+.ai/
+
+# --- Núcleo explícito ---
+core/
+
+# --- Configuración crítica de build/infra ---
+next.config.mjs
+middleware.ts

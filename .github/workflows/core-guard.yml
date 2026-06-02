@@ -1,0 +1,86 @@
+name: core-guard
+
+# Bloquea cualquier cambio a rutas protegidas (.ai/core/.coreignore)
+# salvo que el commit incluya el marcador [CORE-APPROVED: ADR-XXXX].
+# Esto hace cumplir físicamente la regla del CORE_MANIFEST: ni el Agente
+# ni el Orquestador editan el core sin aprobación humana registrada en un ADR.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: ['**']
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detectar cambios al core
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          COREIGNORE=".ai/core/.coreignore"
+          if [ ! -f "$COREIGNORE" ]; then
+            echo "::error::No se encontró $COREIGNORE. El core no está definido."
+            exit 1
+          fi
+
+          # Rango de comparación
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.sha }}"
+          fi
+
+          # Si BASE es vacío/cero (primer push), comparar contra árbol vacío
+          if ! git cat-file -e "$BASE" 2>/dev/null; then
+            BASE=$(git hash-object -t tree /dev/null)
+          fi
+
+          CHANGED=$(git diff --name-only "$BASE" "$HEAD")
+          echo "Archivos cambiados:"
+          echo "$CHANGED"
+
+          # Construir lista de patrones desde .coreignore (ignora comentarios y vacíos)
+          PATTERNS=$(grep -vE '^\s*#' "$COREIGNORE" | grep -vE '^\s*$' || true)
+
+          HIT=""
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            while IFS= read -r pat; do
+              [ -z "$pat" ] && continue
+              # Coincidencia por prefijo de directorio o glob simple
+              case "$file" in
+                $pat|$pat*|${pat}/*)
+                  HIT="$HIT$file (regla: $pat)\n"
+                  ;;
+              esac
+            done <<< "$PATTERNS"
+          done <<< "$CHANGED"
+
+          if [ -z "$HIT" ]; then
+            echo "✅ Ningún archivo del core fue tocado."
+            exit 0
+          fi
+
+          echo -e "⚠ Cambios detectados en el CORE:\n$HIT"
+
+          # Buscar marcador de aprobación en los mensajes de commit del rango
+          LOG=$(git log "$BASE".."$HEAD" --pretty=%B || true)
+          if echo "$LOG" | grep -qE '\[CORE-APPROVED: ADR-[0-9]{4}\]'; then
+            echo "✅ Marcador [CORE-APPROVED: ADR-XXXX] presente. Cambio al core autorizado."
+            exit 0
+          fi
+
+          echo "::error::Se modificó el CORE sin aprobación. Requiere ADR aprobado por el humano"
+          echo "::error::y el marcador [CORE-APPROVED: ADR-XXXX] en el mensaje del commit."
+          echo "::error::Ver .ai/core/CORE_MANIFEST.md"
+          exit 1
