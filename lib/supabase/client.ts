@@ -1,13 +1,11 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 import { publicEnv } from "@/lib/env";
 
 /**
- * Cliente Supabase para el navegador (anon key → respeta la RLS).
- *
- * Hito 0: SOLO inicialización vía env vars. Sin auth, sin queries, sin schema.
- * Se expone como factory (no singleton de módulo) para diferir la lectura de env
- * al punto de uso y mantener el esqueleto sin efectos en import.
+ * Cliente Supabase para el navegador (sesión vía cookies SSR, compartida con middleware/server).
+ * Crear PEREZOSAMENTE dentro de handlers (no en module/mount) → la página renderiza sin env real.
+ * Solo anon key + RLS. La autorización real la dan middleware (getUser) + RLS; aquí NUNCA service_role.
  */
-export function createSupabaseBrowserClient(): SupabaseClient {
-  return createClient(publicEnv.supabaseUrl(), publicEnv.supabaseAnonKey());
+export function createSupabaseBrowserClient() {
+  return createBrowserClient(publicEnv.supabaseUrl(), publicEnv.supabaseAnonKey());
 }
