@@ -95,3 +95,27 @@ un único ADR de cobertura del guard.
 
 ### Trazabilidad
 - Relaciona: `ADR-0003`, `.ai/core/.coreignore`, `DEBT-0001`, `DEBT-0002`
+
+---
+
+## DEBT-0004 — Auditor lee la fila completa de `users` (PII), no solo labels
+
+- **Estado:** abierta
+- **Fecha de registro:** 2026-06-02
+- **Decisor (asumir como deuda):** Nicolas (humano)
+- **Registró:** Orquestador (Claude Cowork)
+- **Severidad global:** media — exceso de columnas (PII) para el rol auditor; NO es leak entre distribuciones.
+
+### Contexto
+`users_select` (lib/rls-policies/policies.sql) da al auditor SELECT de la fila completa de
+`users` (email, phone, preferences, auth_providers). La RLS filtra por fila, no por columna.
+Para el ranking el auditor solo necesita `full_name` + `distribution_id`. Decisión de Nicolas
+(2026-06-02): restringir a labels.
+
+### Condición de salida
+Crear una vista de labels (`full_name` + `distribution_id`) o column-grants, reapuntar el
+acceso del auditor a esa vista y quitarle el SELECT sobre la tabla `users` cruda. Toca
+`lib/rls-policies/` (core) → ADR + `[CORE-APPROVED]`. Hacer ANTES de que haya datos reales (hito de auth).
+
+### Trazabilidad
+- Relaciona: `ADR-0003`, `lib/rls-policies/policies.sql`, `docs/DATA_MODEL.md`, `DEBT-0001`
