@@ -1,0 +1,21 @@
+-- ============================================================================
+-- Royal Control — seed de roles / bootstrap  (NÚCLEO / CORE)
+-- ============================================================================
+-- ⚠ ARCHIVO CORE (.coreignore: db/seed/roles.sql). Autorizado por ADR-0003.
+--
+-- Decisión de ADR-0003 (autoridad: Nicolas):
+--   • SIN categorías globales de fábrica. El Admin las crea desde la app.
+--   • Primer admin: se asigna MANUALMENTE (sin email hardcodeado en seed). El usuario
+--     se registra (signup), y un humano con acceso a la DB hace, una sola vez:
+--         update public.users set role = 'admin' where id = '<uuid-del-usuario>';
+--     (Esa es la única forma de crear el primer admin; no se siembra en código.)
+--
+-- Por tanto este seed NO inserta datos de negocio a propósito. Los valores de `app_role`
+-- viven en el enum (0000_init.sql), no como filas. Se deja como punto de control core
+-- explícito y documentado.
+--
+-- Las cuentas de servicio de Postgres (anon/authenticated/service_role) las provee
+-- Supabase; los GRANTs sobre ellas están en 0000_init.sql.
+-- ============================================================================
+
+-- (intencionalmente sin INSERTs)

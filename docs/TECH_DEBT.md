@@ -72,3 +72,26 @@ requiere ADR + aprobación de Nicolas + commit `[CORE-APPROVED]`. Se agrupa con 
 
 ### Trazabilidad
 - Relaciona: `ADR-0002`, `.ai/core/.coreignore`, `.github/workflows/core-guard.yml`, `DEBT-0001`
+
+---
+
+## DEBT-0003 — El guard solo protege migraciones 0000_*, no las futuras (0001+)
+
+- **Estado:** abierta
+- **Fecha de registro:** 2026-06-02
+- **Decisor (asumir como deuda):** Nicolas (humano)
+- **Registró:** Orquestador (Claude Cowork)
+- **Severidad global:** media-alta — los cambios futuros de schema vía migraciones escapan al guard.
+
+### Contexto
+`.coreignore` protege `db/migrations/0000_*` (glob). Las migraciones siguientes (`0001+`),
+donde vivirán los cambios evolutivos del schema, NO están cubiertas. La RLS del Hito 2 se
+ubicó en `lib/rls-policies/` (sí protegida) justo por esto, pero el schema futuro queda expuesto.
+
+### Condición de salida
+Ampliar `.coreignore` a `db/migrations/` (directorio completo). Editar `.coreignore` = core →
+ADR + aprobación de Nicolas + `[CORE-APPROVED]`. Agrupar con DEBT-0001 ítem 3 y DEBT-0002 en
+un único ADR de cobertura del guard.
+
+### Trazabilidad
+- Relaciona: `ADR-0003`, `.ai/core/.coreignore`, `DEBT-0001`, `DEBT-0002`
