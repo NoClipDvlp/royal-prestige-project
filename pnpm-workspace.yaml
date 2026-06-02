@@ -1,0 +1,24 @@
+# Hito 0: sharp (optimización de imágenes de Next) NO se compila todavía — el
+# esqueleto no usa imágenes. Reactivar (true) cuando entren logos/fotos (DATA_MODEL: logo_url, photo_url).
+allowBuilds:
+  sharp: false
+minimumReleaseAgeExclude:
+  - '@next/env@16.2.7'
+  - '@next/swc-darwin-arm64@16.2.7'
+  - '@next/swc-darwin-x64@16.2.7'
+  - '@next/swc-linux-arm64-gnu@16.2.7'
+  - '@next/swc-linux-arm64-musl@16.2.7'
+  - '@next/swc-linux-x64-gnu@16.2.7'
+  - '@next/swc-linux-x64-musl@16.2.7'
+  - '@next/swc-win32-arm64-msvc@16.2.7'
+  - '@next/swc-win32-x64-msvc@16.2.7'
+  - '@supabase/auth-js@2.107.0'
+  - '@supabase/functions-js@2.107.0'
+  - '@supabase/postgrest-js@2.107.0'
+  - '@supabase/realtime-js@2.107.0'
+  - '@supabase/storage-js@2.107.0'
+  - '@supabase/supabase-js@2.107.0'
+  - '@types/react@19.2.16'
+  - next@16.2.7
+  - react-dom@19.2.7
+  - react@19.2.7
