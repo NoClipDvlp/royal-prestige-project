@@ -170,3 +170,27 @@ Google OAuth y la confirmación de email obligatoria.
 
 ### Trazabilidad
 - Relaciona: `ADR-0006`, `ADR-0007`, `db/migrations/0003_tasks_engine.sql`, `DEBT-0001`, `DEBT-0005`
+
+---
+
+## DEBT-0007 — Edición de recurrentes "este y siguientes" / "este día futuro" no es atómica
+
+- **Estado:** abierta
+- **Fecha de registro:** 2026-06-02
+- **Decisor (asumir como deuda):** Nicolas (humano)
+- **Registró:** Orquestador (Claude Cowork)
+- **Severidad global:** media-baja — estado recuperable; fallo raro.
+
+### Contexto
+`updateTask` con scope `this_and_following` (UPDATE `recurrence_until` + INSERT nueva serie) y
+`this_day` futuro (`excluded_dates += D` + INSERT task `once`) corren como sentencias secuenciales
+en la server action (Supabase JS no envuelve multi-statement en transacción). Si falla a mitad,
+queda estado parcial (recuperable reintentando). La atomicidad real requiere un RPC postgres
+(SECURITY DEFINER) = core.
+
+### Condición de salida
+Mover el split/exclude a un RPC atómico en `db/migrations/` (core → ADR + `[CORE-APPROVED]`).
+Post-MVP salvo que se observe inconsistencia.
+
+### Trazabilidad
+- Relaciona: `ADR-0007`, `lib/actions/tasks.ts`, `DEBT-0001`
