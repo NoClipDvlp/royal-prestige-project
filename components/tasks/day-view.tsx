@@ -12,9 +12,6 @@ import type { DayItem, TaskPriority } from "@/lib/tasks/types";
 const ROW_H = 72; // px por hora (aire entre horas — sensación premium, sin amontonar)
 const POINT_MIN = 30; // minutos que ocupa un "punto" (sin duración) SOLO para el cálculo de solape
 const PAD = 16; // aire arriba (antes de 08:00) y abajo (después de 22:00) dentro de la tarjeta
-const EDIT_BLOCK_MIN = 80; // alto mínimo de un bloque EDITABLE: garantiza título + hora + toggle (3 pills)
-const RO_POINT_H = 60; // alto de un "punto" en solo-lectura (sin toggle)
-const RO_DUR_MIN = 44; // alto mínimo de un bloque con duración corta en solo-lectura
 const GUTTER = "3.25rem"; // ancho del carril de etiquetas de hora
 
 const PRIORITY_DOT: Record<TaskPriority, string> = {
@@ -198,22 +195,21 @@ export function DayView({
               {blocks.map((b) => {
                 const top = PAD + ((b.startMin - WORKDAY_START * 60) / 60) * ROW_H;
                 const durH = b.hasDuration ? ((b.endMin - b.startMin) / 60) * ROW_H : 0;
-                // EDITABLE: alto mínimo que SIEMPRE deja sitio al toggle (título + hora + 0/50/100),
-                // aunque la duración real sea corta o sea un "punto". SOLO-LECTURA: más compacto (sin toggle).
-                const naturalH = editable
-                  ? Math.max(EDIT_BLOCK_MIN, durH)
-                  : b.hasDuration
-                    ? Math.max(RO_DUR_MIN, durH)
-                    : RO_POINT_H;
-                const avail = containerH - top - 4; // usa el aire inferior (PAD) sin desbordar la tarjeta
-                const height = Math.max(editable ? EDIT_BLOCK_MIN : RO_DUR_MIN, Math.min(naturalH, avail));
+                // Alto ∝ DURACIÓN, sin rebasar la franja: un bloque con duración mide exactamente su
+                // duración (1h = ROW_H); un "punto" (sin duración) ocupa EXACTAMENTE una franja (1 fila).
+                const naturalH = b.hasDuration ? durH : ROW_H;
+                const avail = containerH - top - 2; // no desbordar la tarjeta por abajo
+                const height = Math.max(24, Math.min(naturalH, avail));
+                // Contenido proporcional al alto disponible (evita recortes en bloques cortos).
+                const showTime = height >= 50;
+                const showToggle = editable && height >= 66;
                 const widthPct = 100 / b.lanes;
                 const it = b.item;
                 return (
                   <div
                     key={it.taskId}
                     className={cn(
-                      "pointer-events-auto absolute flex flex-col gap-1 overflow-hidden rounded-xl border border-white/70 bg-white/55 p-2 shadow-sm backdrop-blur-sm",
+                      "pointer-events-auto absolute flex flex-col gap-0.5 overflow-hidden rounded-xl border border-white/70 bg-white/55 p-1.5 shadow-sm backdrop-blur-sm",
                       "dark:border-white/10 dark:bg-white/10",
                       (it.status ?? 0) === 100 && "opacity-60",
                     )}
@@ -238,12 +234,14 @@ export function DayView({
                         </button>
                       )}
                     </div>
-                    <span className="text-[10px] text-muted">
-                      {fmt(b.startMin)}
-                      {b.hasDuration ? `–${fmt(b.startMin + (it.durationMinutes as number))}` : ""}
-                    </span>
-                    {editable && (
-                      <div className="mt-auto pt-1">
+                    {showTime && (
+                      <span className="text-[10px] text-muted">
+                        {fmt(b.startMin)}
+                        {b.hasDuration ? `–${fmt(b.startMin + (it.durationMinutes as number))}` : ""}
+                      </span>
+                    )}
+                    {showToggle && (
+                      <div className="mt-auto">
                         <StatusToggle taskId={it.taskId} date={it.date} status={it.status} compact />
                       </div>
                     )}
