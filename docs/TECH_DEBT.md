@@ -4,6 +4,11 @@
 > condición de salida explícita. Si una deuda no tiene criterio de cierre, no es deuda:
 > es un bug sin dueño. El Orquestador mantiene este archivo; cerrar una deuda puede
 > requerir ADR si la resolución toca arquitectura o `/core`.
+>
+> ✅ **Validado en Supabase real (E2E parcial, 2026-06-03):** el trigger `handle_new_user`, la RLS self,
+> el `middleware` (getUser), el signup y las tareas reales (alta + estado + edición de recurrentes)
+> funcionan end-to-end. Lo pendiente para el E2E completo es **config/infra** (DEBT-0008/0009) y una
+> mejora de core (DEBT-0010), no lógica de producto.
 
 ---
 
@@ -194,3 +199,71 @@ Post-MVP salvo que se observe inconsistencia.
 
 ### Trazabilidad
 - Relaciona: `ADR-0007`, `lib/actions/tasks.ts`, `DEBT-0001`
+
+---
+
+## DEBT-0008 — SMTP propio pendiente (confirmación de email + reset de contraseña)
+
+- **Estado:** abierta
+- **Fecha de registro:** 2026-06-03
+- **Decisor (asumir como deuda):** Nicolas (humano)
+- **Registró:** Orquestador (Claude Cowork)
+- **Severidad global:** media-alta — sin email fiable, el signup (confirmación obligatoria, ADR-0006) y el reset de contraseña no operan de forma confiable en producción.
+
+### Contexto
+La confirmación de email obligatoria (ADR-0006) y el reset de contraseña dependen del envío de email.
+El SMTP por defecto de Supabase es de cortesía (rate-limited, no apto para producción). Detectado en la validación E2E.
+
+### Condición de salida
+Configurar un SMTP propio (Resend / SendGrid / similar) en Supabase → Auth → SMTP Settings, con dominio verificado. Config de infra; no toca código.
+
+### Trazabilidad
+- Relaciona: `ADR-0006`, `docs/DEPLOY.md`, `DEBT-0006`
+
+---
+
+## DEBT-0009 — Google OAuth consent screen sin configurar
+
+- **Estado:** abierta
+- **Fecha de registro:** 2026-06-03
+- **Decisor (asumir como deuda):** Nicolas (humano)
+- **Registró:** Orquestador (Claude Cowork)
+- **Severidad global:** media — "Continuar con Google" falla hasta configurar la consent screen.
+
+### Contexto
+El login con Google da error hasta configurar/publicar la **OAuth consent screen** en Google Cloud (o,
+en modo *testing*, añadir los emails como usuarios de prueba). Detectado en la validación E2E.
+
+### Condición de salida
+Configurar la OAuth consent screen en Google Cloud (scopes + dominio) y publicarla, o añadir test users
+mientras esté en testing. Config de infra.
+
+### Trazabilidad
+- Relaciona: `ADR-0006`, `docs/DEPLOY.md`, `DEBT-0006`
+
+---
+
+## DEBT-0010 — `forbid_self_privilege_escalation` bloquea operaciones de SISTEMA
+
+- **Estado:** abierta
+- **Fecha de registro:** 2026-06-03
+- **Decisor (asumir como deuda):** Nicolas (humano)
+- **Registró:** Orquestador (Claude Cowork)
+- **Severidad global:** media — mejora de core; hay workaround. Afecta el bootstrap (asignar el primer admin).
+
+### Contexto
+El trigger `forbid_self_privilege_escalation` (`0000_init`) bloquea cambiar `role`/`distribution_id`
+cuando `public.app_current_role()` ≠ `admin`. Pero en operaciones de **SISTEMA** —SQL directo en el editor
+o `service_role`— `auth.uid()` es null → `app_current_role()` es null (≠ admin) → el trigger **también**
+bloquea esas operaciones legítimas (p.ej. el `UPDATE ... role='admin'` del primer admin en DEPLOY.md §7,
+o un proceso server con service_role). No solo bloquea a usuarios-app no-admin, que era la intención.
+
+### Condición de salida
+Mejorar el trigger para distinguir **usuario-app** de **sistema** (p.ej. permitir cuando `auth.uid()` es
+null = no hay sesión de app). Toca `0000_init` (core) → ADR posterior + `[CORE-APPROVED]`.
+**Workaround actual (bootstrap):** desactivar/reactivar el trigger alrededor de la asignación —
+`alter table public.users disable trigger trg_users_no_priv_esc;` → `update ... set role='admin' ...` →
+`alter table public.users enable trigger trg_users_no_priv_esc;`.
+
+### Trazabilidad
+- Relaciona: `ADR-0003`, `db/migrations/0000_init.sql`, `docs/DEPLOY.md`, `DEBT-0001`
