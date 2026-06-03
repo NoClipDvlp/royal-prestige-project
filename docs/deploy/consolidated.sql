@@ -1,15 +1,16 @@
 -- ============================================================================
--- Royal Control — SQL CONSOLIDADO DE DEPLOY (GENERADO — no editar a mano)
+-- Royal Control — SQL CONSOLIDADO DE DEPLOY (GENERADO — IDEMPOTENTE, re-ejecutable)
 -- Fuente: migraciones + RLS del repo. Orden: 0000 → policies → 0001 → 0002 → 0003 → 0004 → 0005.
--- Aplicar en Supabase (SQL Editor o psql). Ver docs/DEPLOY.md para el contexto
--- (pg_cron, OAuth, confirmación de email, env, primer admin).
+-- ⚠ Re-ejecutable sin importar el estado (corre 2 veces sin error): create ... if not exists,
+--    do-guards de enums, create or replace trigger/view/function, drop policy if exists + create,
+--    add column if not exists, drop constraint if exists + add. NO cambia el diseño (DEBT-0011).
+-- Aplicar en Supabase (SQL Editor o psql). Ver docs/DEPLOY.md (pg_cron, OAuth, email, env, primer admin).
 -- Helpers de RLS en public.app_current_role/app_current_distribution (ADR-0008).
 -- ============================================================================
 
 -- =====================================================================
 -- >>> db/migrations/0000_init.sql
 -- =====================================================================
-
 -- ============================================================================
 -- Royal Control — 0000_init  (NÚCLEO / CORE)
 -- ============================================================================
@@ -32,17 +33,17 @@ create extension if not exists pgcrypto;
 -- ----------------------------------------------------------------------------
 -- Enums (los 6, incl. post-MVP jd/seller desde día 1)
 -- ----------------------------------------------------------------------------
-create type app_role        as enum ('admin','auditor','distributor','jd','seller');
-create type category_scope  as enum ('global','personal');
-create type task_origin     as enum ('self','superior');
-create type task_priority   as enum ('low','medium','high');
-create type recurrence_type as enum ('once','daily','weekly','monthly');
-create type snapshot_period as enum ('monthly','quarterly');
+do $$ begin if not exists (select 1 from pg_type where typname = 'app_role') then create type app_role as enum ('admin','auditor','distributor','jd','seller'); end if; end $$;
+do $$ begin if not exists (select 1 from pg_type where typname = 'category_scope') then create type category_scope as enum ('global','personal'); end if; end $$;
+do $$ begin if not exists (select 1 from pg_type where typname = 'task_origin') then create type task_origin as enum ('self','superior'); end if; end $$;
+do $$ begin if not exists (select 1 from pg_type where typname = 'task_priority') then create type task_priority as enum ('low','medium','high'); end if; end $$;
+do $$ begin if not exists (select 1 from pg_type where typname = 'recurrence_type') then create type recurrence_type as enum ('once','daily','weekly','monthly'); end if; end $$;
+do $$ begin if not exists (select 1 from pg_type where typname = 'snapshot_period') then create type snapshot_period as enum ('monthly','quarterly'); end if; end $$;
 
 -- ----------------------------------------------------------------------------
 -- Tablas
 -- ----------------------------------------------------------------------------
-create table distributions (
+create table if not exists distributions (
   id         uuid primary key default gen_random_uuid(),
   name       text not null,
   logo_url   text,
@@ -50,7 +51,7 @@ create table distributions (
   updated_at timestamptz not null default now()
 );
 
-create table users (
+create table if not exists users (
   id              uuid primary key references auth.users(id) on delete cascade,
   full_name       text,
   email           text unique,
@@ -76,7 +77,7 @@ create table users (
   )
 );
 
-create table distribution_owners (
+create table if not exists distribution_owners (
   id              uuid primary key default gen_random_uuid(),
   distribution_id uuid not null references distributions(id) on delete cascade,
   user_id         uuid not null references users(id) on delete cascade,
@@ -87,7 +88,7 @@ create table distribution_owners (
 );
 
 -- Jerarquía post-MVP: existe y con RLS activa, pero NO se puebla en MVP.
-create table org_hierarchy (
+create table if not exists org_hierarchy (
   id              uuid primary key default gen_random_uuid(),
   user_id         uuid not null references users(id) on delete cascade,
   parent_user_id  uuid references users(id) on delete set null,
@@ -95,7 +96,7 @@ create table org_hierarchy (
   created_at      timestamptz not null default now()
 );
 
-create table task_categories (
+create table if not exists task_categories (
   id            uuid primary key default gen_random_uuid(),
   name          text not null,
   color         text,
@@ -109,7 +110,7 @@ create table task_categories (
   )
 );
 
-create table tasks (
+create table if not exists tasks (
   id                  uuid primary key default gen_random_uuid(),
   owner_user_id       uuid not null references users(id) on delete cascade,
   assigned_by_user_id uuid references users(id) on delete set null,   -- null = self
@@ -127,7 +128,7 @@ create table tasks (
 
 -- Fuente de verdad del cumplimiento. distribution_id/owner_user_id DESNORMALIZADOS
 -- (poblados por trigger desde tasks) para una RLS plana e indexable, sin join.
-create table task_instances (
+create table if not exists task_instances (
   id              uuid primary key default gen_random_uuid(),
   task_id         uuid not null references tasks(id) on delete cascade,
   date            date not null,
@@ -138,7 +139,7 @@ create table task_instances (
   unique (task_id, date)                                       -- idempotencia del job
 );
 
-create table metric_snapshots (
+create table if not exists metric_snapshots (
   id             uuid primary key default gen_random_uuid(),
   user_id        uuid not null references users(id) on delete cascade,
   period         snapshot_period not null,
@@ -153,7 +154,7 @@ create table metric_snapshots (
   unique (user_id, period, period_start)        -- evita snapshots duplicados
 );
 
-create table calendar_links (
+create table if not exists calendar_links (
   id                 uuid primary key default gen_random_uuid(),
   user_id            uuid not null references users(id) on delete cascade,
   google_calendar_id text not null,
@@ -162,7 +163,7 @@ create table calendar_links (
   created_at         timestamptz not null default now()
 );
 
-create table calendar_sync_conflicts (
+create table if not exists calendar_sync_conflicts (
   id               uuid primary key default gen_random_uuid(),
   user_id          uuid not null references users(id) on delete cascade,
   task_instance_id uuid not null references task_instances(id) on delete cascade,
@@ -171,7 +172,7 @@ create table calendar_sync_conflicts (
   created_at       timestamptz not null default now()
 );
 
-create table notifications (
+create table if not exists notifications (
   id      uuid primary key default gen_random_uuid(),
   user_id uuid not null references users(id) on delete cascade,
   kind    text not null,
@@ -202,11 +203,11 @@ create or replace function public.set_updated_at()
 returns trigger language plpgsql set search_path = '' as $$
 begin new.updated_at := now(); return new; end $$;
 
-create trigger trg_distributions_updated before update on distributions
+create or replace trigger trg_distributions_updated before update on distributions
   for each row execute function public.set_updated_at();
-create trigger trg_users_updated before update on users
+create or replace trigger trg_users_updated before update on users
   for each row execute function public.set_updated_at();
-create trigger trg_tasks_updated before update on tasks
+create or replace trigger trg_tasks_updated before update on tasks
   for each row execute function public.set_updated_at();
 
 -- task_instances: poblar distribution_id/owner_user_id desde el task padre (ignora lo que mande el cliente)
@@ -222,7 +223,7 @@ begin
   end if;
   return new;
 end $$;
-create trigger trg_ti_scope before insert on task_instances
+create or replace trigger trg_ti_scope before insert on task_instances
   for each row execute function public.populate_task_instance_scope();
 
 -- tasks: distribution_id y owner_user_id INMUTABLES (sostiene la desnormalización de instances)
@@ -237,7 +238,7 @@ begin
   end if;
   return new;
 end $$;
-create trigger trg_task_scope_immutable before update on tasks
+create or replace trigger trg_task_scope_immutable before update on tasks
   for each row execute function public.forbid_task_scope_change();
 
 -- metric_snapshots: APPEND-ONLY (ni admin ni service_role recalculan). Invariante de DATA_MODEL #6.
@@ -246,9 +247,9 @@ returns trigger language plpgsql set search_path = '' as $$
 begin
   raise exception 'metric_snapshots es append-only (sin UPDATE/DELETE)';
 end $$;
-create trigger trg_snapshot_no_update before update on metric_snapshots
+create or replace trigger trg_snapshot_no_update before update on metric_snapshots
   for each row execute function public.forbid_snapshot_mutation();
-create trigger trg_snapshot_no_delete before delete on metric_snapshots
+create or replace trigger trg_snapshot_no_delete before delete on metric_snapshots
   for each row execute function public.forbid_snapshot_mutation();
 
 -- users: NADIE salvo admin cambia su propio role/distribution_id (anti escalada de privilegios)
@@ -263,32 +264,32 @@ begin
   end if;
   return new;
 end $$;
-create trigger trg_users_no_priv_esc before update on users
+create or replace trigger trg_users_no_priv_esc before update on users
   for each row execute function public.forbid_self_privilege_escalation();
 
 -- ----------------------------------------------------------------------------
 -- Índices (ADR §6) — RLS-perf + queries
 -- ----------------------------------------------------------------------------
-create index idx_users_distribution on users(distribution_id);
-create index idx_users_role on users(role);
-create index idx_tasks_distribution on tasks(distribution_id);
-create index idx_tasks_owner on tasks(owner_user_id);
-create index idx_tasks_start_date on tasks(start_date);
-create index idx_tasks_category on tasks(category_id);
-create index idx_ti_dist_date on task_instances(distribution_id, date);
-create index idx_ti_owner_date on task_instances(owner_user_id, date);
-create index idx_snap_user on metric_snapshots(user_id);
-create index idx_snap_period on metric_snapshots(period, period_start);
-create index idx_downers_distribution on distribution_owners(distribution_id);
-create index idx_downers_user on distribution_owners(user_id);
-create index idx_cat_scope on task_categories(scope);
-create index idx_cat_owner on task_categories(owner_user_id);
-create index idx_orgh_distribution on org_hierarchy(distribution_id);
-create index idx_orgh_parent on org_hierarchy(parent_user_id);
-create index idx_orgh_user on org_hierarchy(user_id);
-create index idx_callinks_user on calendar_links(user_id);
-create index idx_conflicts_user on calendar_sync_conflicts(user_id);
-create index idx_notif_user on notifications(user_id);
+create index if not exists idx_users_distribution on users(distribution_id);
+create index if not exists idx_users_role on users(role);
+create index if not exists idx_tasks_distribution on tasks(distribution_id);
+create index if not exists idx_tasks_owner on tasks(owner_user_id);
+create index if not exists idx_tasks_start_date on tasks(start_date);
+create index if not exists idx_tasks_category on tasks(category_id);
+create index if not exists idx_ti_dist_date on task_instances(distribution_id, date);
+create index if not exists idx_ti_owner_date on task_instances(owner_user_id, date);
+create index if not exists idx_snap_user on metric_snapshots(user_id);
+create index if not exists idx_snap_period on metric_snapshots(period, period_start);
+create index if not exists idx_downers_distribution on distribution_owners(distribution_id);
+create index if not exists idx_downers_user on distribution_owners(user_id);
+create index if not exists idx_cat_scope on task_categories(scope);
+create index if not exists idx_cat_owner on task_categories(owner_user_id);
+create index if not exists idx_orgh_distribution on org_hierarchy(distribution_id);
+create index if not exists idx_orgh_parent on org_hierarchy(parent_user_id);
+create index if not exists idx_orgh_user on org_hierarchy(user_id);
+create index if not exists idx_callinks_user on calendar_links(user_id);
+create index if not exists idx_conflicts_user on calendar_sync_conflicts(user_id);
+create index if not exists idx_notif_user on notifications(user_id);
 
 -- ----------------------------------------------------------------------------
 -- GRANTs base. La RLS (lib/rls-policies) filtra FILAS; los GRANTs filtran VERBOS.
@@ -312,7 +313,6 @@ grant all on all tables in schema public to service_role;
 -- =====================================================================
 -- >>> lib/rls-policies/policies.sql
 -- =====================================================================
-
 -- ============================================================================
 -- Royal Control — RLS policies  (NÚCLEO / CORE)
 -- ============================================================================
@@ -343,14 +343,18 @@ begin
 end $$;
 
 -- ============================ distributions ============================
+drop policy if exists distributions_select on distributions;
 create policy distributions_select on distributions for select using (
   public.app_current_role() in ('admin','auditor')
   or (public.app_current_role() = 'distributor' and id = public.app_current_distribution())
 );
+drop policy if exists distributions_insert on distributions;
 create policy distributions_insert on distributions for insert
   with check (public.app_current_role() = 'admin');
+drop policy if exists distributions_update on distributions;
 create policy distributions_update on distributions for update
   using (public.app_current_role() = 'admin') with check (public.app_current_role() = 'admin');
+drop policy if exists distributions_delete on distributions;
 create policy distributions_delete on distributions for delete
   using (public.app_current_role() = 'admin');
 
@@ -359,59 +363,74 @@ create policy distributions_delete on distributions for delete
 -- El AUDITOR ya NO lee la tabla users cruda (PII): sus labels van por la vista users_labels
 -- (db/migrations/0001_auditor_labels.sql, ADR-0005 / DEBT-0004).
 -- (Snapshot de referencia; la verdad aplicable a una DB desplegada es la migración 0001.)
+drop policy if exists users_select on users;
 create policy users_select on users for select using (
   public.app_current_role() = 'admin'
   or id = (select auth.uid())
 );
 -- INSERT: solo admin (alta de perfiles; el alta por signup la hace service_role/trigger).
+drop policy if exists users_insert on users;
 create policy users_insert on users for insert
   with check (public.app_current_role() = 'admin');
 -- UPDATE: admin (cualquiera) o self. El cambio de role/distribution_id propio lo BLOQUEA
 -- el trigger forbid_self_privilege_escalation (defensa adicional a nivel columna).
+drop policy if exists users_update on users;
 create policy users_update on users for update
   using (public.app_current_role() = 'admin' or id = (select auth.uid()))
   with check (public.app_current_role() = 'admin' or id = (select auth.uid()));
+drop policy if exists users_delete on users;
 create policy users_delete on users for delete
   using (public.app_current_role() = 'admin');
 
 -- ============================ distribution_owners ============================
+drop policy if exists downers_select on distribution_owners;
 create policy downers_select on distribution_owners for select using (
   public.app_current_role() = 'admin'
   or (public.app_current_role() = 'distributor' and distribution_id = public.app_current_distribution())
 );
+drop policy if exists downers_insert on distribution_owners;
 create policy downers_insert on distribution_owners for insert
   with check (public.app_current_role() = 'admin');
+drop policy if exists downers_update on distribution_owners;
 create policy downers_update on distribution_owners for update
   using (public.app_current_role() = 'admin') with check (public.app_current_role() = 'admin');
+drop policy if exists downers_delete on distribution_owners;
 create policy downers_delete on distribution_owners for delete
   using (public.app_current_role() = 'admin');
 
 -- ============================ org_hierarchy (post-MVP, vacía pero protegida) ============================
+drop policy if exists orgh_select on org_hierarchy;
 create policy orgh_select on org_hierarchy for select using (
   public.app_current_role() = 'admin'
   or (public.app_current_role() = 'distributor' and distribution_id = public.app_current_distribution())
 );
+drop policy if exists orgh_insert on org_hierarchy;
 create policy orgh_insert on org_hierarchy for insert
   with check (public.app_current_role() = 'admin');
+drop policy if exists orgh_update on org_hierarchy;
 create policy orgh_update on org_hierarchy for update
   using (public.app_current_role() = 'admin') with check (public.app_current_role() = 'admin');
+drop policy if exists orgh_delete on org_hierarchy;
 create policy orgh_delete on org_hierarchy for delete
   using (public.app_current_role() = 'admin');
 
 -- ============================ task_categories ============================
 -- SELECT: admin todo; distributor ve globales + las propias. (auditor: nada)
+drop policy if exists cat_select on task_categories;
 create policy cat_select on task_categories for select using (
   public.app_current_role() = 'admin'
   or (public.app_current_role() = 'distributor'
       and (scope = 'global' or owner_user_id = (select auth.uid())))
 );
 -- INSERT: admin crea globales; distributor crea personales propias.
+drop policy if exists cat_insert on task_categories;
 create policy cat_insert on task_categories for insert with check (
   (public.app_current_role() = 'admin' and scope = 'global' and owner_user_id is null
      and created_by = (select auth.uid()))
   or (public.app_current_role() = 'distributor' and scope = 'personal'
      and owner_user_id = (select auth.uid()) and created_by = (select auth.uid()))
 );
+drop policy if exists cat_update on task_categories;
 create policy cat_update on task_categories for update using (
   (public.app_current_role() = 'admin' and scope = 'global')
   or (public.app_current_role() = 'distributor' and scope = 'personal' and owner_user_id = (select auth.uid()))
@@ -419,22 +438,26 @@ create policy cat_update on task_categories for update using (
   (public.app_current_role() = 'admin' and scope = 'global')
   or (public.app_current_role() = 'distributor' and scope = 'personal' and owner_user_id = (select auth.uid()))
 );
+drop policy if exists cat_delete on task_categories;
 create policy cat_delete on task_categories for delete using (
   (public.app_current_role() = 'admin' and scope = 'global')
   or (public.app_current_role() = 'distributor' and scope = 'personal' and owner_user_id = (select auth.uid()))
 );
 
 -- ============================ tasks (distributor = SELF) ============================
+drop policy if exists tasks_select on tasks;
 create policy tasks_select on tasks for select using (
   public.app_current_role() = 'admin'
   or (public.app_current_role() = 'distributor' and owner_user_id = (select auth.uid()))
 );
+drop policy if exists tasks_insert on tasks;
 create policy tasks_insert on tasks for insert with check (
   public.app_current_role() = 'admin'
   or (public.app_current_role() = 'distributor'
       and owner_user_id = (select auth.uid())
       and distribution_id = public.app_current_distribution())
 );
+drop policy if exists tasks_update on tasks;
 create policy tasks_update on tasks for update using (
   public.app_current_role() = 'admin'
   or (public.app_current_role() = 'distributor' and owner_user_id = (select auth.uid()))
@@ -446,18 +469,22 @@ create policy tasks_update on tasks for update using (
 );
 -- DELETE solo admin (ADR-0007): el distribuidor "borra" vía soft-delete (tasks.deleted_at, UPDATE self).
 -- Evita que un hard-delete (cascade a task_instances) borre historial de incumplimiento del período en curso.
+drop policy if exists tasks_delete on tasks;
 create policy tasks_delete on tasks for delete using (
   public.app_current_role() = 'admin'
 );
 
 -- ============================ task_instances (distributor = SELECT/UPDATE self) ============================
+drop policy if exists ti_select on task_instances;
 create policy ti_select on task_instances for select using (
   public.app_current_role() = 'admin'
   or (public.app_current_role() = 'distributor' and owner_user_id = (select auth.uid()))
 );
 -- INSERT/DELETE: solo admin (la materialización diaria la hace el job vía service_role).
+drop policy if exists ti_insert on task_instances;
 create policy ti_insert on task_instances for insert
   with check (public.app_current_role() = 'admin');
+drop policy if exists ti_update on task_instances;
 create policy ti_update on task_instances for update using (
   public.app_current_role() = 'admin'
   or (public.app_current_role() = 'distributor' and owner_user_id = (select auth.uid()))
@@ -465,28 +492,34 @@ create policy ti_update on task_instances for update using (
   public.app_current_role() = 'admin'
   or (public.app_current_role() = 'distributor' and owner_user_id = (select auth.uid()))
 );
+drop policy if exists ti_delete on task_instances;
 create policy ti_delete on task_instances for delete
   using (public.app_current_role() = 'admin');
 
 -- ============================ metric_snapshots ============================
 -- SELECT: admin + AUDITOR (todas) + el dueño. INSERT: admin (y service_role job). U/D: nadie (append-only).
+drop policy if exists snap_select on metric_snapshots;
 create policy snap_select on metric_snapshots for select using (
   public.app_current_role() in ('admin','auditor')
   or (public.app_current_role() = 'distributor' and user_id = (select auth.uid()))
 );
+drop policy if exists snap_insert on metric_snapshots;
 create policy snap_insert on metric_snapshots for insert
   with check (public.app_current_role() = 'admin');
 -- (sin policies de UPDATE/DELETE → default-deny; además el trigger append-only bloquea a todos)
 
 -- ============================ calendar_links (distributor CRUD self) ============================
+drop policy if exists callinks_select on calendar_links;
 create policy callinks_select on calendar_links for select using (
   public.app_current_role() = 'admin'
   or (public.app_current_role() = 'distributor' and user_id = (select auth.uid()))
 );
+drop policy if exists callinks_insert on calendar_links;
 create policy callinks_insert on calendar_links for insert with check (
   public.app_current_role() = 'admin'
   or (public.app_current_role() = 'distributor' and user_id = (select auth.uid()))
 );
+drop policy if exists callinks_update on calendar_links;
 create policy callinks_update on calendar_links for update using (
   public.app_current_role() = 'admin'
   or (public.app_current_role() = 'distributor' and user_id = (select auth.uid()))
@@ -494,18 +527,22 @@ create policy callinks_update on calendar_links for update using (
   public.app_current_role() = 'admin'
   or (public.app_current_role() = 'distributor' and user_id = (select auth.uid()))
 );
+drop policy if exists callinks_delete on calendar_links;
 create policy callinks_delete on calendar_links for delete using (
   public.app_current_role() = 'admin'
   or (public.app_current_role() = 'distributor' and user_id = (select auth.uid()))
 );
 
 -- ============================ calendar_sync_conflicts (distributor SELECT/UPDATE self) ============================
+drop policy if exists conflicts_select on calendar_sync_conflicts;
 create policy conflicts_select on calendar_sync_conflicts for select using (
   public.app_current_role() = 'admin'
   or (public.app_current_role() = 'distributor' and user_id = (select auth.uid()))
 );
+drop policy if exists conflicts_insert on calendar_sync_conflicts;
 create policy conflicts_insert on calendar_sync_conflicts for insert
   with check (public.app_current_role() = 'admin');
+drop policy if exists conflicts_update on calendar_sync_conflicts;
 create policy conflicts_update on calendar_sync_conflicts for update using (
   public.app_current_role() = 'admin'
   or (public.app_current_role() = 'distributor' and user_id = (select auth.uid()))
@@ -513,16 +550,20 @@ create policy conflicts_update on calendar_sync_conflicts for update using (
   public.app_current_role() = 'admin'
   or (public.app_current_role() = 'distributor' and user_id = (select auth.uid()))
 );
+drop policy if exists conflicts_delete on calendar_sync_conflicts;
 create policy conflicts_delete on calendar_sync_conflicts for delete
   using (public.app_current_role() = 'admin');
 
 -- ============================ notifications (distributor SELECT/UPDATE self) ============================
+drop policy if exists notif_select on notifications;
 create policy notif_select on notifications for select using (
   public.app_current_role() = 'admin'
   or (public.app_current_role() = 'distributor' and user_id = (select auth.uid()))
 );
+drop policy if exists notif_insert on notifications;
 create policy notif_insert on notifications for insert
   with check (public.app_current_role() = 'admin');
+drop policy if exists notif_update on notifications;
 create policy notif_update on notifications for update using (
   public.app_current_role() = 'admin'
   or (public.app_current_role() = 'distributor' and user_id = (select auth.uid()))
@@ -530,13 +571,13 @@ create policy notif_update on notifications for update using (
   public.app_current_role() = 'admin'
   or (public.app_current_role() = 'distributor' and user_id = (select auth.uid()))
 );
+drop policy if exists notif_delete on notifications;
 create policy notif_delete on notifications for delete
   using (public.app_current_role() = 'admin');
 
 -- =====================================================================
 -- >>> db/migrations/0001_auditor_labels.sql
 -- =====================================================================
-
 -- ============================================================================
 -- Royal Control — 0001_auditor_labels  (NÚCLEO / CORE)
 -- ============================================================================
@@ -560,7 +601,7 @@ create policy notif_delete on notifications for delete
 --   • proyección id/full_name/distribution_id            → CERO PII.
 -- NOTA: el linter de Supabase marcará "security definer view" como warning. Es INTENCIONAL y
 -- está mitigado por lo anterior. No cambiar a security_invoker = true (rompería al auditor).
-create view public.users_labels
+create or replace view public.users_labels
   with (security_barrier = true, security_invoker = false) as
   select id, full_name, distribution_id
   from public.users
@@ -576,7 +617,6 @@ alter policy users_select on public.users
 -- =====================================================================
 -- >>> db/migrations/0002_auth_profile.sql
 -- =====================================================================
-
 -- ============================================================================
 -- Royal Control — 0002_auth_profile  (NÚCLEO / CORE)
 -- ============================================================================
@@ -620,7 +660,7 @@ exception
 end;
 $$;
 
-create trigger on_auth_user_created
+create or replace trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
@@ -651,14 +691,13 @@ begin
 end;
 $$;
 
-create trigger on_auth_identity_changed
+create or replace trigger on_auth_identity_changed
   after insert or delete on auth.identities
   for each row execute function public.sync_auth_providers();
 
 -- =====================================================================
 -- >>> db/migrations/0003_tasks_engine.sql
 -- =====================================================================
-
 -- ============================================================================
 -- Royal Control — 0003_tasks_engine  (NÚCLEO / CORE)
 -- ============================================================================
@@ -672,16 +711,16 @@ create trigger on_auth_identity_changed
 
 -- ── Columnas nuevas ──────────────────────────────────────────────────────────
 alter table public.tasks
-  add column recurrence_until date,
-  add column excluded_dates   date[] not null default '{}',
-  add column deleted_at        timestamptz;
+  add column if not exists recurrence_until date,
+  add column if not exists excluded_dates   date[] not null default '{}',
+  add column if not exists deleted_at        timestamptz;
 
 -- Overrides por ocurrencia ("solo este día"). NULL = hereda del task. (display = coalesce(instance.x, task.x))
 alter table public.task_instances
-  add column title       text,
-  add column category_id uuid references public.task_categories(id) on delete set null,
-  add column priority    public.task_priority,
-  add column time_slot   time;
+  add column if not exists title       text,
+  add column if not exists category_id uuid references public.task_categories(id) on delete set null,
+  add column if not exists priority    public.task_priority,
+  add column if not exists time_slot   time;
 
 -- ── "Hoy" del sistema (TZ fija, ADR-0007) ────────────────────────────────────
 create or replace function public.app_today()
@@ -746,7 +785,7 @@ begin
   return new;
 end $$;
 
-create trigger trg_task_materialize_today
+create or replace trigger trg_task_materialize_today
   after insert on public.tasks
   for each row execute function public.materialize_task_today();
 
@@ -764,7 +803,7 @@ begin
   return new;
 end $$;
 
-create trigger trg_ti_scope_immutable
+create or replace trigger trg_ti_scope_immutable
   before update on public.task_instances
   for each row execute function public.forbid_instance_scope_change();
 
@@ -789,7 +828,6 @@ end $$;
 -- =====================================================================
 -- >>> db/migrations/0004_tasks_premium.sql
 -- =====================================================================
-
 -- ============================================================================
 -- Royal Control — 0004_tasks_premium  (NÚCLEO / CORE)
 -- ============================================================================
@@ -806,12 +844,12 @@ end $$;
 -- ── 1. Duración de tareas ─────────────────────────────────────────────────────
 -- null = comportamiento actual ("punto" en la franja). Cuando se fija, es un bloque en la franja.
 alter table public.tasks
-  add column duration_minutes int;
+  add column if not exists duration_minutes int;
 
 -- Override por ocurrencia ("solo este día"): coalesce(instance.duration_minutes, task.duration_minutes),
 -- como los demás overrides de 0003. NULL = hereda del task.
 alter table public.task_instances
-  add column duration_minutes int;
+  add column if not exists duration_minutes int;
 
 -- ── CHECK de duración (tasks) ─────────────────────────────────────────────────
 -- Reglas (ADR-0011 §1, Opción A confirmada por Nicolas 2026-06-03):
@@ -822,8 +860,8 @@ alter table public.task_instances
 -- ⚠ CRÍTICO — sin `time_slot + interval`: en Postgres `time '21:00' + interval '3 hours'` = '00:00'
 --   (ENVUELVE pasada medianoche) → un CHECK ingenuo daría 00:00 ≤ 22:00 = PASA (falso OK).
 --   Se usa aritmética en MINUTOS desde medianoche: minuto_inicio + duración ≤ 22*60 (1320). Sin wrap.
-alter table public.tasks
-  add constraint chk_task_duration check (
+alter table public.tasks drop constraint if exists chk_task_duration;
+alter table public.tasks add constraint chk_task_duration check (
     duration_minutes is null
     or (
       duration_minutes > 0
@@ -841,8 +879,8 @@ alter table public.tasks
 -- TAMBIÉN sobrescribe time_slot. La validación del tope sobre el time_slot efectivo (cuando la
 -- instancia hereda la hora del task) vive en la SERVER ACTION (no-core, hito siguiente).
 -- NO asumir que el tope del efectivo está cubierto a nivel DB.
-alter table public.task_instances
-  add constraint chk_ti_duration check (
+alter table public.task_instances drop constraint if exists chk_ti_duration;
+alter table public.task_instances add constraint chk_ti_duration check (
     duration_minutes is null
     or (
       duration_minutes > 0
@@ -888,7 +926,6 @@ grant  execute on function public.tasks_due_on(date) to authenticated;
 -- =====================================================================
 -- >>> db/migrations/0005_metrics.sql
 -- =====================================================================
-
 -- ============================================================================
 -- Royal Control — 0005_metrics  (NÚCLEO / CORE)
 -- ============================================================================
@@ -896,8 +933,18 @@ grant  execute on function public.tasks_due_on(date) to authenticated;
 -- Cambios requieren ADR + [CORE-APPROVED: ADR-XXXX]. Commit con [CORE-APPROVED: ADR-0012].
 --
 -- Motor de MÉTRICAS vivo (SPEC §8, ADR-0012): cumplimiento ponderado por prioridad.
---   compliance_pct = round( Σ(w·status_pct)::numeric / NULLIF(Σ(w),0) ),  w = priority_weight(coalesce(ti.priority,t.priority))
--- NO filtra deleted_at (borradas cuentan, ADR-0007). d_end capado a app_today().
+--   1) priority_weight(p): peso 1/2/3 (low/medium/high). IMMUTABLE.
+--   2) compliance_self(d_start,d_end): KPI del PROPIO usuario. SECURITY INVOKER → la RLS self protege.
+--   3) compliance_ranking(d_start,d_end): ranking admin/auditor. SECURITY DEFINER + gate de rol;
+--      devuelve SOLO agregados + ids (cero títulos/horas → preserva la frontera PII de ADR-0005).
+-- ADITIVO: NO toca RLS, triggers, ni otras tablas. Snapshots congelados quedan FUERA (diferidos).
+--
+-- Fórmula del % ponderado (status_pct ∈ {0,50,100} → el ÷100 y ×100 se cancelan):
+--   compliance_pct = round( Σ(w·status_pct) / Σ(w) ),  w = priority_weight(coalesce(ti.priority,t.priority))
+-- ⚠ CRÍTICO: división ENTERA trunca en Postgres → se castea el numerador a NUMERIC ANTES de dividir
+--   (si no, 62.5 → 62). round(numeric) es half-away-from-zero → casa con Math.round de summarizeWeek (valores 0–100).
+-- NO se filtra deleted_at: las instancias de tareas borradas SÍ cuentan al KPI histórico (ADR-0007).
+-- d_end se capa a app_today() → los días futuros no inflan ni penalizan.
 -- ============================================================================
 
 -- ── 1. Peso por prioridad ─────────────────────────────────────────────────────
@@ -910,7 +957,9 @@ as $$
   select case p when 'high' then 3 when 'medium' then 2 when 'low' then 1 end
 $$;
 
--- ── 2. KPI propio (SECURITY INVOKER → respeta la RLS self) ────────────────────
+-- ── 2. KPI propio (SECURITY INVOKER → respeta la RLS self de ti_select/tasks_select) ──
+-- Una sola fila (agregado sobre las instancias propias del rango). Fuente ÚNICA de la fórmula
+-- (reemplazará a summarizeWeek en el cableado del home — sub-hito UI no-core siguiente).
 create or replace function public.compliance_self(d_start date, d_end date)
 returns table (
   total          int,
@@ -938,7 +987,14 @@ as $$
   where ti.date between d_start and least(d_end, public.app_today());
 $$;
 
--- ── 3. Ranking admin/auditor (SECURITY DEFINER + gate de rol; solo agregados + ids) ──
+-- ── 3. Ranking admin/auditor (SECURITY DEFINER + gate de rol) ─────────────────
+-- ⚠ DEFINER: el auditor NO tiene RLS sobre task_instances/tasks (a propósito, ADR-0005) → un INVOKER
+--   le daría 0 filas. El gate interno por app_current_role() (que lee el auth.uid() del JWT del
+--   invocador, aun dentro de DEFINER) es el control de acceso. Devuelve SOLO agregados + ids: NUNCA
+--   títulos/horas → mantiene la minimización PII. Dos granularidades vía discriminador `grain`:
+--     • 'user'         → una fila por usuario role='distributor' (user_id + distribution_id)
+--     • 'distribution' → rollup AGREGANDO sobre las instancias (Σ(w·status)/Σ(w)), NO promedio de promedios.
+--   Σw=0 (sin datos) → NULLIF → compliance_pct NULL (nunca 0%).
 create or replace function public.compliance_ranking(d_start date, d_end date)
 returns table (
   grain           text,
@@ -956,8 +1012,9 @@ security definer
 set search_path = ''
 as $$
 begin
+  -- Gate fail-closed: solo admin/auditor. Distribuidor / role=null / sin sesión → 0 filas.
   if (select public.app_current_role()) not in ('admin'::public.app_role, 'auditor'::public.app_role) then
-    return;  -- gate fail-closed → 0 filas
+    return;
   end if;
 
   return query
@@ -972,8 +1029,11 @@ begin
     join public.users u on u.id = ti.owner_user_id and u.role = 'distributor'::public.app_role
     where ti.date between d_start and least(d_end, public.app_today())
   )
+  -- Grano USUARIO (una fila por distribuidor)
   select
-    'user'::text, b.owner_user_id, b.distribution_id,
+    'user'::text,
+    b.owner_user_id,
+    b.distribution_id,
     count(*)::int,
     count(*) filter (where b.status_pct = 100)::int,
     count(*) filter (where b.status_pct = 50)::int,
@@ -982,8 +1042,11 @@ begin
   from base b
   group by b.owner_user_id, b.distribution_id
   union all
+  -- Grano DISTRIBUCIÓN (rollup por agregación, NO promedio de promedios)
   select
-    'distribution'::text, null::uuid, b.distribution_id,
+    'distribution'::text,
+    null::uuid,
+    b.distribution_id,
     count(*)::int,
     count(*) filter (where b.status_pct = 100)::int,
     count(*) filter (where b.status_pct = 50)::int,
@@ -993,6 +1056,8 @@ begin
   group by b.distribution_id;
 end $$;
 
+-- ── GRANTs: solo authenticated invoca (anon = sin acceso a negocio, 0000_init). ──
+-- priority_weight necesita grant a authenticated porque compliance_self (INVOKER) lo llama como el rol llamante.
 revoke execute on function public.priority_weight(public.task_priority) from public;
 grant  execute on function public.priority_weight(public.task_priority) to authenticated;
 revoke execute on function public.compliance_self(date, date) from public;

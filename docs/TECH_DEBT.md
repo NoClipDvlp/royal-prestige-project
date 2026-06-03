@@ -267,3 +267,32 @@ null = no hay sesión de app). Toca `0000_init` (core) → ADR posterior + `[COR
 
 ### Trazabilidad
 - Relaciona: `ADR-0003`, `db/migrations/0000_init.sql`, `docs/DEPLOY.md`, `DEBT-0001`
+
+---
+
+## DEBT-0011 — `consolidated.sql` no era idempotente; deploy frágil ante estado parcial
+
+- **Estado:** ✅ CERRADA (2026-06-03) — consolidado regenerado idempotente y verificado (corre 2× sin error).
+- **Fecha de registro:** 2026-06-03
+- **Decisor (asumir como deuda):** Nicolas (humano)
+- **Registró:** Orquestador (Claude Cowork)
+- **Severidad global:** media — bloqueó un deploy real; no afecta datos ni seguridad.
+
+### Contexto
+`docs/deploy/consolidated.sql` se mantenía concatenando las migraciones tal cual: `create type` / `create
+table` / `create index` / `create trigger` / `create policy` / `add column` / `add constraint` SIN guardas.
+Re-ejecutarlo (o ejecutarlo sobre un estado parcial) abortaba con `42701` (duplicate column) y similares.
+Detectado en Capa 0 al desplegar: Nicolas ya tenía `0004` aplicado y el consolidado no pudo añadir `0005`.
+
+### Resolución
+Regenerado **de raíz idempotente** (mismo diseño, solo re-ejecutable): `create … if not exists`, do-guards
+de enums (`pg_type`), `create or replace trigger/view/function`, `drop policy if exists` + `create`,
+`add column if not exists`, `drop constraint if exists` + `add`. Grants/funciones ya eran idempotentes.
+**Verificado**: (a) aplicar el consolidado 2 veces seguidas → exit 0; (b) migraciones reales 0000–0004 +
+consolidado encima → añade 0005 sin error (escenario exacto del incidente). Nota de uso en `docs/DEPLOY.md` (Vía C).
+
+### Condición de salida
+Cumplida. Mantener la idempotencia al añadir futuras migraciones al consolidado (mismas guardas).
+
+### Trazabilidad
+- Relaciona: `docs/deploy/consolidated.sql`, `docs/DEPLOY.md`, `DEBT-0006`, `ADR-0011`, `ADR-0012`

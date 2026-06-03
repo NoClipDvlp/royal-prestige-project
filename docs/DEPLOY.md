@@ -61,8 +61,16 @@ psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0004_tasks_premium.sql
 psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0005_metrics.sql
 ```
 
+**Vía C — consolidado idempotente (recomendada para re-aplicar / estado parcial):**
+`docs/deploy/consolidated.sql` es un único archivo **re-ejecutable sin importar el estado** (corre 2 veces
+sin error): usa `create … if not exists`, do-guards de enums, `create or replace trigger/view/function`,
+`drop policy if exists` + `create`, `add column if not exists` y `drop constraint if exists` + `add`.
+Pégalo entero en el SQL Editor. Es seguro aunque ya tengas migraciones aplicadas (p. ej. 0004 ya estaba y
+falta 0005): añade lo que falte y no rompe lo existente (DEBT-0011). Refleja el mismo diseño que las
+migraciones individuales; no las sustituye como verdad (la verdad sigue en `db/migrations/`, que es core).
+
 > Cualquier cambio futuro a estas rutas es **core** (ver `.ai/core/.coreignore`): requiere ADR + commit
-> `[CORE-APPROVED]`. Esta guía solo las *aplica*, no las modifica.
+> `[CORE-APPROVED]`. Esta guía solo las *aplica*, no las modifica. El consolidado (`docs/deploy/`) es no-core.
 
 ---
 
