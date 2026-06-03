@@ -8,9 +8,18 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { assertCallerIsAdmin, getProfile, type AppRole } from "@/lib/auth/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createSupabaseAdminClient, createSupabasePasswordProbeClient } from "@/lib/supabase/admin";
 
 type Result = { ok: boolean; error?: string };
+
+/** Fila de tarea de un usuario, para la vista READ-ONLY del admin. */
+export type AdminTaskRow = {
+  taskId: string;
+  date: string;
+  title: string;
+  timeSlot: string | null;
+  status: number;
+};
 
 async function requireAdminOrError(): Promise<Result | null> {
   const profile = await getProfile();
@@ -110,5 +119,88 @@ export async function adminResetPassword(userId: string, newPassword: string): P
   const admin = createSupabaseAdminClient();
   const { error } = await admin.auth.admin.updateUserById(userId, { password: newPassword });
   if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+/**
+ * Listar (READ-ONLY) las tareas de un usuario. Con la SESIÓN del admin: la RLS `ti_select` permite
+ * que el admin lea todas las instancias. Solo lectura — editar tareas de otros está DIFERIDO.
+ * ⚠ Solo aparecen las instancias materializadas (el motor materializa "hoy"; histórico = días ya
+ * materializados). Devuelve las más recientes primero.
+ */
+export async function adminListUserTasks(
+  userId: string,
+): Promise<{ ok: boolean; error?: string; tasks?: AdminTaskRow[] }> {
+  try {
+    await assertCallerIsAdmin();
+  } catch {
+    return { ok: false, error: "Operación restringida a admin." };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("task_instances")
+    .select("task_id, date, status_pct, title, time_slot, tasks(title, time_slot, deleted_at)")
+    .eq("owner_user_id", userId)
+    .order("date", { ascending: false })
+    .limit(50);
+  if (error) return { ok: false, error: error.message };
+
+  type Embed = { title: string | null; time_slot: string | null; deleted_at: string | null };
+  type Raw = {
+    task_id: string;
+    date: string;
+    status_pct: number | null;
+    title: string | null;
+    time_slot: string | null;
+    tasks: Embed | Embed[] | null;
+  };
+
+  const tasks: AdminTaskRow[] = ((data ?? []) as unknown as Raw[])
+    .map((r) => ({ r, t: (Array.isArray(r.tasks) ? r.tasks[0] : r.tasks) ?? null }))
+    .filter(({ t }) => !t?.deleted_at)
+    .map(({ r, t }) => ({
+      taskId: String(r.task_id),
+      date: String(r.date),
+      title: r.title ?? t?.title ?? "",
+      timeSlot: r.time_slot ?? t?.time_slot ?? null,
+      status: r.status_pct ?? 0,
+    }));
+  return { ok: true, tasks };
+}
+
+/**
+ * Eliminar usuario (DESTRUCTIVO, hard-delete). Exige:
+ *   1) ser admin (assertCallerIsAdmin),
+ *   2) NO ser uno mismo (self-guard),
+ *   3) RE-AUTENTICACIÓN por contraseña del admin con un cliente desechable (no toca su sesión).
+ * Solo tras la re-auth se usa service_role: auth.admin.deleteUser → ON DELETE CASCADE borra el
+ * perfil, tareas, instancias y métricas del usuario. Irreversible.
+ */
+export async function adminDeleteUser(targetUserId: string, adminPassword: string): Promise<Result> {
+  let me;
+  try {
+    me = await assertCallerIsAdmin(); // gate ANTES de service_role
+  } catch {
+    return { ok: false, error: "Operación restringida a admin." };
+  }
+  if (!me.email) return { ok: false, error: "Tu cuenta no tiene email para re-autenticar." };
+  if (targetUserId === me.id) return { ok: false, error: "No puedes eliminarte a ti mismo." };
+  if (!adminPassword) return { ok: false, error: "Escribe tu contraseña para confirmar." };
+
+  // RE-AUTH: verificar la contraseña con un cliente DESECHABLE (anon, sin persistencia) → no rota
+  // los tokens de la sesión viva del admin.
+  const probe = createSupabasePasswordProbeClient();
+  const { error: authErr } = await probe.auth.signInWithPassword({
+    email: me.email,
+    password: adminPassword,
+  });
+  if (authErr) return { ok: false, error: "Contraseña incorrecta." };
+  await probe.auth.signOut(); // defensivo (persistSession:false ya evita persistir)
+
+  // Solo entonces: borrado destructivo con service_role. CASCADE borra todo el histórico.
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.auth.admin.deleteUser(targetUserId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
   return { ok: true };
 }

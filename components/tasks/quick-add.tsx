@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type FormEvent } from "react";
+import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,13 +11,34 @@ import { RECURRENCE_LABEL, type TaskRecurrence } from "@/lib/tasks/types";
 const selectCls =
   "rounded-2xl border border-white/70 bg-white/50 px-3 py-2.5 text-sm text-fg outline-none dark:border-white/10 dark:bg-white/5";
 
-/** Alta rápida (regla de oro): título + hora + recurrencia → una tarea en < 1 min, mínimos clicks. */
-export function QuickAdd({ date }: { date: string }) {
+/**
+ * Alta rápida (regla de oro): título + hora + recurrencia → una tarea en < 1 min, mínimos clicks.
+ * `hour`/`onHourChange` la hacen controlable (drag-create prellenan la hora); `focusSignal` enfoca
+ * el título cuando cambia (al soltar el arrastre en /tareas).
+ */
+export function QuickAdd({
+  date,
+  hour: hourProp,
+  onHourChange,
+  focusSignal,
+}: {
+  date: string;
+  hour?: number;
+  onHourChange?: (h: number) => void;
+  focusSignal?: number;
+}) {
   const [title, setTitle] = useState("");
-  const [hour, setHour] = useState(9);
+  const [hourInner, setHourInner] = useState(9);
+  const hour = hourProp ?? hourInner;
+  const setHour = (h: number) => (onHourChange ? onHourChange(h) : setHourInner(h));
   const [recurrence, setRecurrence] = useState<TaskRecurrence>("once");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const titleRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (focusSignal && focusSignal > 0) titleRef.current?.focus();
+  }, [focusSignal]);
 
   const hours = Array.from({ length: WORKDAY_END - WORKDAY_START + 1 }, (_, i) => WORKDAY_START + i);
 
@@ -41,6 +62,7 @@ export function QuickAdd({ date }: { date: string }) {
   return (
     <form onSubmit={handle} className="flex flex-col gap-2 sm:flex-row sm:items-center">
       <Input
+        ref={titleRef}
         placeholder="Nueva tarea…"
         value={title}
         onChange={(e) => setTitle(e.target.value)}

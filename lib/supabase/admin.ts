@@ -18,3 +18,20 @@ export function createSupabaseAdminClient() {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }
+
+/**
+ * Cliente DESECHABLE (anon, sin persistencia) para RE-AUTENTICAR verificando una contraseña sin
+ * tocar la sesión viva del usuario. Se usa antes de operaciones destructivas (eliminar usuario):
+ * firmar con el client de sesión rotaría los tokens del admin; este verifica la credencial y se
+ * descarta. Usa la anon key (pública) — válida en servidor.
+ */
+export function createSupabasePasswordProbeClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) {
+    throw new Error("Faltan NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+  }
+  return createClient(url, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}

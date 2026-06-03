@@ -1,4 +1,4 @@
-import { requireRole } from "@/lib/auth/server";
+import { getUser, requireRole } from "@/lib/auth/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageTitle } from "@/components/page-title";
 import { CreateUser } from "@/components/admin/create-user";
@@ -9,6 +9,7 @@ import { CategoriesManager } from "@/components/admin/categories-manager";
 // Panel admin (ADR-0009). requireRole('admin') + datos vía sesión admin (RLS admin = ve todo).
 export default async function AdminPage() {
   await requireRole("admin");
+  const me = await getUser();
   const supabase = await createSupabaseServerClient();
 
   const [usersRes, distRes, catRes] = await Promise.all([
@@ -25,7 +26,7 @@ export default async function AdminPage() {
     <div className="flex flex-col gap-5">
       <PageTitle title="Administración" subtitle="Usuarios, distribuciones y categorías globales." />
       <CreateUser />
-      <UsersManager users={users} distributions={distributions} />
+      <UsersManager users={users} distributions={distributions} currentAdminId={me?.id ?? ""} />
       <DistributionsManager distributions={distributions} />
       <CategoriesManager categories={categories} />
     </div>

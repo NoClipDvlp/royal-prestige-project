@@ -1,10 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Trash2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { assignUserRole, updateUserName, adminResetPassword } from "@/lib/actions/admin";
+import { UserTasks } from "@/components/admin/user-tasks";
+import { DeleteUserDialog } from "@/components/admin/delete-user-dialog";
 import type { AppRole } from "@/lib/auth/server";
 
 export type AdminUser = {
@@ -26,7 +29,15 @@ const ROLES = [
 const selectCls =
   "rounded-xl border border-white/70 bg-white/50 px-2.5 py-2 text-sm text-fg dark:border-white/10 dark:bg-white/5";
 
-export function UsersManager({ users, distributions }: { users: AdminUser[]; distributions: Dist[] }) {
+export function UsersManager({
+  users,
+  distributions,
+  currentAdminId,
+}: {
+  users: AdminUser[];
+  distributions: Dist[];
+  currentAdminId: string;
+}) {
   return (
     <GlassCard className="p-6">
       <h2 className="mb-4 text-sm font-semibold text-fg">Usuarios</h2>
@@ -35,7 +46,7 @@ export function UsersManager({ users, distributions }: { users: AdminUser[]; dis
       ) : (
         <ul className="space-y-3">
           {users.map((u) => (
-            <UserRow key={u.id} user={u} distributions={distributions} />
+            <UserRow key={u.id} user={u} distributions={distributions} currentAdminId={currentAdminId} />
           ))}
         </ul>
       )}
@@ -43,13 +54,24 @@ export function UsersManager({ users, distributions }: { users: AdminUser[]; dis
   );
 }
 
-function UserRow({ user, distributions }: { user: AdminUser; distributions: Dist[] }) {
+function UserRow({
+  user,
+  distributions,
+  currentAdminId,
+}: {
+  user: AdminUser;
+  distributions: Dist[];
+  currentAdminId: string;
+}) {
   const [name, setName] = useState(user.full_name ?? "");
   const [role, setRole] = useState<string>(user.role ?? "");
   const [dist, setDist] = useState<string>(user.distribution_id ?? "");
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const needsDist = role === "distributor";
+
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const isSelf = user.id === currentAdminId;
 
   // Dirty-check: "Guardar" solo se habilita si hay un cambio real respecto al valor original.
   const dirty =
@@ -123,8 +145,29 @@ function UserRow({ user, distributions }: { user: AdminUser; distributions: Dist
       <div className="flex gap-2">
         <Button onClick={save} disabled={pending || !dirty} className="h-9 text-xs">Guardar</Button>
         <Button variant="glass" onClick={reset} disabled={pending} className="h-9 text-xs">Reset</Button>
+        {!isSelf ? (
+          <Button
+            variant="glass"
+            onClick={() => setConfirmDelete(true)}
+            disabled={pending}
+            aria-label="Eliminar usuario"
+            className="h-9 px-2.5 text-xs text-red-500 hover:text-red-600"
+          >
+            <Trash2 size={14} />
+          </Button>
+        ) : null}
       </div>
       {msg ? <span className="text-xs text-muted sm:basis-full">{msg}</span> : null}
+
+      <UserTasks userId={user.id} />
+
+      {confirmDelete ? (
+        <DeleteUserDialog
+          userId={user.id}
+          userLabel={user.full_name || user.email || "este usuario"}
+          onClose={() => setConfirmDelete(false)}
+        />
+      ) : null}
     </li>
   );
 }

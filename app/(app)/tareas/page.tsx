@@ -1,7 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageTitle } from "@/components/page-title";
-import { QuickAdd } from "@/components/tasks/quick-add";
-import { DayView } from "@/components/tasks/day-view";
+import { TareasBoard } from "@/components/tasks/tareas-board";
 import type { DayItem, StatusPct, TaskPriority, TaskRecurrence } from "@/lib/tasks/types";
 
 function bogotaToday(): string {
@@ -55,9 +54,8 @@ export default async function TareasPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageTitle title="Tareas" subtitle="Tu día por franjas (8:00–22:00)." />
-      <QuickAdd date={today} />
-      <DayView items={items} date={today} />
+      <PageTitle title="Tareas" subtitle="Tu día por franjas (8:00–22:00). Arrastra sobre una franja para crear." />
+      <TareasBoard items={items} date={today} />
     </div>
   );
 }
