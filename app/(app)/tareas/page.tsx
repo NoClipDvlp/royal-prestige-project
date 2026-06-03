@@ -1,68 +1,63 @@
-"use client";
-
-import { useState } from "react";
-import { GlassCard } from "@/components/ui/card";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageTitle } from "@/components/page-title";
-import { useDensity } from "@/components/ui/density";
-import { cn } from "@/lib/cn";
-import { mockTasks } from "@/lib/mock";
-import { WORKDAY_END, WORKDAY_START } from "@/lib/constants";
+import { QuickAdd } from "@/components/tasks/quick-add";
+import { DayView } from "@/components/tasks/day-view";
+import type { DayItem, StatusPct, TaskPriority, TaskRecurrence } from "@/lib/tasks/types";
 
-const views = ["Día", "Semana", "Mes"] as const;
-type View = (typeof views)[number];
+function bogotaToday(): string {
+  // YYYY-MM-DD en America/Bogota (coincide con app_today() de la DB).
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
+}
 
-export default function TareasPage() {
-  const { density } = useDensity();
-  const gap = density === "compact" ? "gap-3" : "gap-5";
-  const [view, setView] = useState<View>("Día");
-  const hours = Array.from({ length: WORKDAY_END - WORKDAY_START + 1 }, (_, i) => WORKDAY_START + i);
+export default async function TareasPage() {
+  const today = bogotaToday();
+  const supabase = await createSupabaseServerClient();
+
+  // Instancias de hoy del usuario (RLS self) + contenido del task (coalesce override/task).
+  const { data } = await supabase
+    .from("task_instances")
+    .select(
+      "task_id, date, status_pct, title, time_slot, priority, tasks(title, time_slot, priority, recurrence, deleted_at)",
+    )
+    .eq("date", today);
+
+  type TaskEmbed = {
+    title: string | null;
+    time_slot: string | null;
+    priority: string | null;
+    recurrence: string | null;
+    deleted_at: string | null;
+  };
+  type Row = {
+    task_id: string;
+    date: string;
+    status_pct: number | null;
+    title: string | null;
+    time_slot: string | null;
+    priority: string | null;
+    tasks: TaskEmbed | TaskEmbed[] | null;
+  };
+
+  const rows = (data ?? []) as unknown as Row[];
+
+  const items: DayItem[] = rows
+    .map((r) => ({ r, t: (Array.isArray(r.tasks) ? r.tasks[0] : r.tasks) ?? null }))
+    .filter(({ t }) => !t?.deleted_at) // filtrado de visualización (no en RLS): oculta soft-deleted
+    .map(({ r, t }) => ({
+      taskId: String(r.task_id),
+      date: String(r.date),
+      title: r.title ?? t?.title ?? "",
+      timeSlot: r.time_slot ?? t?.time_slot ?? null,
+      priority: (r.priority ?? t?.priority ?? "medium") as TaskPriority,
+      recurrence: (t?.recurrence ?? "once") as TaskRecurrence,
+      status: (r.status_pct ?? 0) as StatusPct,
+    }));
 
   return (
-    <div className={cn("flex flex-col", gap)}>
-      <PageTitle title="Tareas" subtitle="Organiza tu día por franjas. Mock — sin datos reales." />
-
-      <div className="flex gap-1 self-start rounded-full glass p-1">
-        {views.map((v) => (
-          <button
-            key={v}
-            type="button"
-            onClick={() => setView(v)}
-            className={cn(
-              "rounded-full px-4 py-1.5 text-sm transition",
-              view === v ? "bg-accent text-accent-fg" : "text-muted hover:text-fg",
-            )}
-          >
-            {v}
-          </button>
-        ))}
-      </div>
-
-      {view === "Día" ? (
-        <GlassCard className="p-2">
-          <ul className="divide-y divide-white/40 dark:divide-white/10">
-            {hours.map((h) => {
-              const task = mockTasks.find((t) => Number.parseInt(t.time, 10) === h);
-              return (
-                <li key={h} className="flex items-center gap-3 px-3 py-2.5">
-                  <span className="w-12 shrink-0 text-xs text-muted">
-                    {String(h).padStart(2, "0")}:00
-                  </span>
-                  {task ? (
-                    <span className="flex-1 text-sm text-fg">{task.title}</span>
-                  ) : (
-                    <span className="flex-1 text-sm text-muted/40">—</span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </GlassCard>
-      ) : (
-        <GlassCard className="p-10 text-center text-sm text-muted">
-          Vista <span className="font-medium text-fg">{view}</span> — placeholder. El calendario nativo
-          (día/semana/mes) se conecta con la feature real en un hito posterior.
-        </GlassCard>
-      )}
+    <div className="flex flex-col gap-5">
+      <PageTitle title="Tareas" subtitle="Tu día por franjas (8:00–22:00)." />
+      <QuickAdd date={today} />
+      <DayView items={items} date={today} />
     </div>
   );
 }
