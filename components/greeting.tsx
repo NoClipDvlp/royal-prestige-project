@@ -8,8 +8,11 @@ function partOfDay(hour: number): string {
   return "buenas noches";
 }
 
-/** Saludo estilo Apple (SPEC §11) con datos REALES. La franja se calcula en cliente (evita desajuste SSR). */
-export function Greeting({ name, goalPct, pending }: { name: string; goalPct: number; pending: number }) {
+/**
+ * Saludo estilo Apple (SPEC §11) con datos REALES. La franja se calcula en cliente (evita desajuste SSR).
+ * goalPct null = sin datos esta semana → mensaje alterno (nunca "0%").
+ */
+export function Greeting({ name, goalPct, pending }: { name: string; goalPct: number | null; pending: number }) {
   const [hour, setHour] = useState<number | null>(null);
   useEffect(() => setHour(new Date().getHours()), []);
 
@@ -24,8 +27,14 @@ export function Greeting({ name, goalPct, pending }: { name: string; goalPct: nu
         {greet ? `, ${greet}.` : "."}
       </h1>
       <p className="text-base text-muted">
-        Vas en <span className="font-semibold text-fg">{goalPct}%</span> de tu meta semanal — te faltan{" "}
-        <span className="font-semibold text-fg">{pending}</span> pendientes.
+        {goalPct === null ? (
+          "Aún no tienes tareas registradas esta semana."
+        ) : (
+          <>
+            Vas en <span className="font-semibold text-fg">{goalPct}%</span> de tu meta semanal — te faltan{" "}
+            <span className="font-semibold text-fg">{pending}</span> pendientes.
+          </>
+        )}
       </p>
     </div>
   );

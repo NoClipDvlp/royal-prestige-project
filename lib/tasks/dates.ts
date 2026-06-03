@@ -8,6 +8,11 @@ export function addDays(isoDate: string, n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Primer día del mes de `isoDate` (YYYY-MM-01). */
+export function monthStart(isoDate: string): string {
+  return `${isoDate.slice(0, 7)}-01`;
+}
+
 /** ¿Es una fecha ISO válida (YYYY-MM-DD) y real (round-trip)? */
 export function isValidIsoDate(s: string | null | undefined): s is string {
   if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
