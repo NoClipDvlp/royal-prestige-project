@@ -1,7 +1,10 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getProfile, getUser } from "@/lib/auth/server";
 import { DistributorDashboard } from "@/components/dashboard/distributor-dashboard";
+import { GlassCard } from "@/components/ui/card";
+import type { TaskCategory } from "@/components/tasks/task-create-modal";
 import { bogotaToday, summarizeWeek, weekStartMonday, type WeekRow } from "@/lib/dashboard/week";
 import type { DayItem, StatusPct, TaskPriority, TaskRecurrence } from "@/lib/tasks/types";
 
@@ -13,6 +16,15 @@ export default async function Home() {
   if (role === "auditor") redirect("/metricas");
   // distributor (jd/seller futuros caen aquí pero la RLS los limita)
 
+  // El shell hace stream de inmediato; los datos del dashboard llegan dentro del Suspense.
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DistributorData />
+    </Suspense>
+  );
+}
+
+async function DistributorData() {
   const supabase = await createSupabaseServerClient();
   const user = await getUser();
   const name = (user?.user_metadata?.full_name as string | undefined) ?? "—";
@@ -20,12 +32,21 @@ export default async function Home() {
   const today = bogotaToday();
   const weekStart = weekStartMonday(today);
 
-  // Instancias de la semana TRANSCURRIDA (lun → hoy) del usuario (RLS self) + prioridad del task.
-  const { data } = await supabase
-    .from("task_instances")
-    .select("status_pct, date, priority, tasks(priority)")
-    .gte("date", weekStart)
-    .lte("date", today);
+  // Tres lecturas en paralelo (RLS self): semana transcurrida + tareas de hoy + categorías del modal.
+  const [weekRes, todayRes, catRes] = await Promise.all([
+    supabase
+      .from("task_instances")
+      .select("status_pct, date, priority, tasks(priority)")
+      .gte("date", weekStart)
+      .lte("date", today),
+    supabase
+      .from("task_instances")
+      .select(
+        "task_id, date, status_pct, title, time_slot, duration_minutes, priority, tasks(title, time_slot, duration_minutes, priority, recurrence, deleted_at)",
+      )
+      .eq("date", today),
+    supabase.from("task_categories").select("id, name").order("name"),
+  ]);
 
   type EmbedTask = { priority: TaskPriority | null };
   type Raw = {
@@ -35,7 +56,7 @@ export default async function Home() {
     tasks: EmbedTask | EmbedTask[] | null;
   };
 
-  const rows: WeekRow[] = ((data ?? []) as unknown as Raw[]).map((r) => ({
+  const rows: WeekRow[] = ((weekRes.data ?? []) as unknown as Raw[]).map((r) => ({
     status_pct: r.status_pct,
     date: r.date,
     priority: r.priority,
@@ -45,15 +66,10 @@ export default async function Home() {
   const summary = summarizeWeek(rows);
   const pendingToday = rows.filter((r) => r.date === today && (r.status_pct ?? 0) < 100).length;
 
-  // Tareas de HOY con contenido efectivo (coalesce override de la instancia / task) para la lista del home.
-  const { data: todayData } = await supabase
-    .from("task_instances")
-    .select("task_id, date, status_pct, title, time_slot, priority, tasks(title, time_slot, priority, recurrence, deleted_at)")
-    .eq("date", today);
-
   type TaskEmbed = {
     title: string | null;
     time_slot: string | null;
+    duration_minutes: number | null;
     priority: string | null;
     recurrence: string | null;
     deleted_at: string | null;
@@ -64,11 +80,12 @@ export default async function Home() {
     status_pct: number | null;
     title: string | null;
     time_slot: string | null;
+    duration_minutes: number | null;
     priority: string | null;
     tasks: TaskEmbed | TaskEmbed[] | null;
   };
 
-  const todayItems: DayItem[] = ((todayData ?? []) as unknown as TodayRaw[])
+  const todayItems: DayItem[] = ((todayRes.data ?? []) as unknown as TodayRaw[])
     .map((r) => ({ r, t: (Array.isArray(r.tasks) ? r.tasks[0] : r.tasks) ?? null }))
     .filter(({ t }) => !t?.deleted_at) // oculta soft-deleted (filtrado de visualización, no RLS)
     .map(({ r, t }) => ({
@@ -76,10 +93,13 @@ export default async function Home() {
       date: String(r.date),
       title: r.title ?? t?.title ?? "",
       timeSlot: r.time_slot ?? t?.time_slot ?? null,
+      durationMinutes: r.duration_minutes ?? t?.duration_minutes ?? null,
       priority: (r.priority ?? t?.priority ?? "medium") as TaskPriority,
       recurrence: (t?.recurrence ?? "once") as TaskRecurrence,
       status: (r.status_pct ?? 0) as StatusPct,
     }));
+
+  const categories = (catRes.data ?? []) as TaskCategory[];
 
   return (
     <DistributorDashboard
@@ -88,6 +108,21 @@ export default async function Home() {
       pendingToday={pendingToday}
       today={todayItems}
       date={today}
+      categories={categories}
     />
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="flex flex-col gap-5">
+      <GlassCard className="h-36 animate-pulse" />
+      <div className="grid grid-cols-3 gap-5">
+        <GlassCard className="h-28 animate-pulse" />
+        <GlassCard className="h-28 animate-pulse" />
+        <GlassCard className="h-28 animate-pulse" />
+      </div>
+      <GlassCard className="h-48 animate-pulse" />
+    </div>
   );
 }

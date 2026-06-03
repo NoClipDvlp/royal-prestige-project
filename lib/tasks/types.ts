@@ -9,6 +9,7 @@ export type DayItem = {
   date: string; // YYYY-MM-DD
   title: string;
   timeSlot: string | null; // HH:MM
+  durationMinutes: number | null; // null = "punto" en la franja (sin bloque); ADR-0011
   priority: TaskPriority;
   recurrence: TaskRecurrence;
   status: StatusPct;
@@ -20,3 +21,20 @@ export const RECURRENCE_LABEL: Record<TaskRecurrence, string> = {
   weekly: "Semanal",
   monthly: "Mensual",
 };
+
+export const PRIORITY_LABEL: Record<TaskPriority, string> = {
+  low: "Baja",
+  medium: "Media",
+  high: "Alta",
+};
+
+/** Opciones de duración para el alta (null = punto, sin bloque). Visual/organizativo (ADR-0011 §1). */
+export const DURATION_OPTIONS: { value: number | null; label: string }[] = [
+  { value: null, label: "Sin duración (punto)" },
+  { value: 30, label: "30 min" },
+  { value: 60, label: "1 h" },
+  { value: 90, label: "1 h 30" },
+  { value: 120, label: "2 h" },
+  { value: 180, label: "3 h" },
+  { value: 240, label: "4 h" },
+];

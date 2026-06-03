@@ -15,6 +15,7 @@ type CreateInput = {
   recurrence: TaskRecurrence;
   startDate: string; // YYYY-MM-DD
   timeSlot: string | null; // HH:MM
+  durationMinutes?: number | null; // ADR-0011: bloque en la franja; null = punto
   priority: TaskPriority;
   categoryId?: string | null;
 };
@@ -50,11 +51,13 @@ export async function createTask(input: CreateInput): Promise<ActionResult> {
     recurrence: input.recurrence,
     start_date: input.startDate,
     time_slot: input.timeSlot,
+    duration_minutes: input.durationMinutes ?? null, // CHECK en DB: >0 y tope 22:00 (0004)
     priority: input.priority,
     category_id: input.categoryId ?? null,
   });
   if (error) return { ok: false, error: error.message };
   revalidatePath("/tareas"); // el trigger de alta materializa la instancia de hoy si due
+  revalidatePath("/"); // refresca la lista de hoy del home (quick-add)
   return { ok: true };
 }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { useDensity } from "@/components/ui/density";
 import { GlassCard } from "@/components/ui/card";
@@ -17,7 +18,15 @@ const PRIORITY_DOT: Record<TaskPriority, string> = {
  * Lista de tareas de HOY en el home (datos reales, RLS self). Reacciona al toggle de densidad
  * global (compacta/ampliada) del header (Hito 3). Cada tarea con su StatusToggle real.
  */
-export function TodayTasks({ items, date }: { items: DayItem[]; date: string }) {
+export function TodayTasks({
+  items,
+  date,
+  action,
+}: {
+  items: DayItem[];
+  date: string;
+  action?: ReactNode;
+}) {
   const { density } = useDensity();
   const compact = density === "compact";
 
@@ -27,11 +36,16 @@ export function TodayTasks({ items, date }: { items: DayItem[]; date: string }) 
 
   return (
     <section>
-      <div className="mb-2 flex items-center justify-between px-1">
+      <div className="mb-2 flex items-center justify-between gap-2 px-1">
         <p className="text-xs uppercase tracking-wide text-muted">
           Hoy · {items.length} {items.length === 1 ? "tarea" : "tareas"}
         </p>
-        <span className="text-[11px] text-muted/70">{compact ? "Vista compacta" : "Vista ampliada"}</span>
+        <div className="flex items-center gap-2">
+          <span className="hidden text-[11px] text-muted/70 sm:inline">
+            {compact ? "Vista compacta" : "Vista ampliada"}
+          </span>
+          {action}
+        </div>
       </div>
 
       {sorted.length === 0 ? (

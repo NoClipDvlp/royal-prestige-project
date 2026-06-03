@@ -3,6 +3,8 @@ import { CheckCircle2, CircleDashed, CircleDotDashed } from "lucide-react";
 import { GlassCard } from "@/components/ui/card";
 import { Greeting } from "@/components/greeting";
 import { TodayTasks } from "@/components/dashboard/today-tasks";
+import { QuickAddButton } from "@/components/dashboard/quick-add-button";
+import type { TaskCategory } from "@/components/tasks/task-create-modal";
 import { cn } from "@/lib/cn";
 import type { WeekSummary } from "@/lib/dashboard/week";
 import type { DayItem } from "@/lib/tasks/types";
@@ -14,12 +16,14 @@ export function DistributorDashboard({
   pendingToday,
   today,
   date,
+  categories,
 }: {
   name: string;
   summary: WeekSummary;
   pendingToday: number;
   today: DayItem[];
   date: string;
+  categories: TaskCategory[];
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -45,7 +49,11 @@ export function DistributorDashboard({
         </div>
       </div>
 
-      <TodayTasks items={today} date={date} />
+      <TodayTasks
+        items={today}
+        date={date}
+        action={<QuickAddButton date={date} categories={categories} />}
+      />
     </div>
   );
 }
