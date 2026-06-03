@@ -11,8 +11,10 @@ import type { DayItem, TaskPriority } from "@/lib/tasks/types";
 
 const ROW_H = 72; // px por hora (aire entre horas — sensación premium, sin amontonar)
 const POINT_MIN = 30; // minutos que ocupa un "punto" (sin duración) SOLO para el cálculo de solape
-const POINT_H = 64; // alto en px de un bloque "punto": cabe título + hora + toggle sin recortar
-const MIN_DUR_H = 46; // alto mínimo de un bloque con duración corta (p.ej. 30 min) para que sea legible
+const PAD = 16; // aire arriba (antes de 08:00) y abajo (después de 22:00) dentro de la tarjeta
+const EDIT_BLOCK_MIN = 80; // alto mínimo de un bloque EDITABLE: garantiza título + hora + toggle (3 pills)
+const RO_POINT_H = 60; // alto de un "punto" en solo-lectura (sin toggle)
+const RO_DUR_MIN = 44; // alto mínimo de un bloque con duración corta en solo-lectura
 const GUTTER = "3.25rem"; // ancho del carril de etiquetas de hora
 
 const PRIORITY_DOT: Record<TaskPriority, string> = {
@@ -110,14 +112,15 @@ export function DayView({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const hours = Array.from({ length: WORKDAY_END - WORKDAY_START + 1 }, (_, i) => WORKDAY_START + i);
-  const totalH = (WORKDAY_END - WORKDAY_START) * ROW_H;
+  const gridSpan = (WORKDAY_END - WORKDAY_START) * ROW_H;
+  const containerH = gridSpan + PAD * 2; // PAD de aire arriba y abajo (los "límites")
   const blocks = layout(items);
   const noTime = items.filter((it) => it.timeSlot == null);
 
   const hourFromY = (clientY: number): number => {
     const el = containerRef.current;
     if (!el) return WORKDAY_START;
-    const y = clientY - el.getBoundingClientRect().top;
+    const y = clientY - el.getBoundingClientRect().top - PAD;
     const h = WORKDAY_START + Math.floor(y / ROW_H);
     return Math.min(WORKDAY_END - 1, Math.max(WORKDAY_START, h));
   };
@@ -148,7 +151,7 @@ export function DayView({
 
   const selTop =
     dragStart !== null && dragEnd !== null
-      ? (Math.min(dragStart, dragEnd) - WORKDAY_START) * ROW_H
+      ? PAD + (Math.min(dragStart, dragEnd) - WORKDAY_START) * ROW_H
       : 0;
   const selH =
     dragStart !== null && dragEnd !== null
@@ -158,7 +161,7 @@ export function DayView({
   return (
     <>
       <GlassCard className="p-2">
-        <div ref={containerRef} className="relative" style={{ height: totalH }}>
+        <div ref={containerRef} className="relative" style={{ height: containerH }}>
           {/* Capa base: rejilla horaria + superficie de drag */}
           <div
             className={cn("absolute inset-0", onRangeCreate && "cursor-pointer select-none")}
@@ -173,7 +176,7 @@ export function DayView({
               <div
                 key={h}
                 className="absolute left-0 right-0 flex items-start"
-                style={{ top: (h - WORKDAY_START) * ROW_H, height: ROW_H }}
+                style={{ top: PAD + (h - WORKDAY_START) * ROW_H, height: ROW_H }}
               >
                 <span className="w-[3.25rem] shrink-0 -translate-y-1.5 pl-1 text-[11px] text-muted">
                   {String(h).padStart(2, "0")}:00
@@ -193,13 +196,18 @@ export function DayView({
           <div className="pointer-events-none absolute inset-0" style={{ paddingLeft: GUTTER }}>
             <div className="relative h-full pr-1">
               {blocks.map((b) => {
-                const top = ((b.startMin - WORKDAY_START * 60) / 60) * ROW_H;
-                const rawH = b.hasDuration ? ((b.endMin - b.startMin) / 60) * ROW_H : POINT_H;
-                const minH = b.hasDuration ? MIN_DUR_H : POINT_H;
-                // Deja ~6px de aire bajo el bloque para que no toque la línea de la hora siguiente.
-                const height = Math.max(minH, Math.min(rawH, totalH - top) - 6);
+                const top = PAD + ((b.startMin - WORKDAY_START * 60) / 60) * ROW_H;
+                const durH = b.hasDuration ? ((b.endMin - b.startMin) / 60) * ROW_H : 0;
+                // EDITABLE: alto mínimo que SIEMPRE deja sitio al toggle (título + hora + 0/50/100),
+                // aunque la duración real sea corta o sea un "punto". SOLO-LECTURA: más compacto (sin toggle).
+                const naturalH = editable
+                  ? Math.max(EDIT_BLOCK_MIN, durH)
+                  : b.hasDuration
+                    ? Math.max(RO_DUR_MIN, durH)
+                    : RO_POINT_H;
+                const avail = containerH - top - 4; // usa el aire inferior (PAD) sin desbordar la tarjeta
+                const height = Math.max(editable ? EDIT_BLOCK_MIN : RO_DUR_MIN, Math.min(naturalH, avail));
                 const widthPct = 100 / b.lanes;
-                const showToggle = editable && height >= 58; // hay sitio para el toggle de estado
                 const it = b.item;
                 return (
                   <div
@@ -230,13 +238,15 @@ export function DayView({
                         </button>
                       )}
                     </div>
-                    <div className="mt-auto flex items-center justify-between gap-2">
-                      <span className="text-[10px] text-muted">
-                        {fmt(b.startMin)}
-                        {b.hasDuration ? `–${fmt(b.startMin + (it.durationMinutes as number))}` : ""}
-                      </span>
-                      {showToggle && <StatusToggle taskId={it.taskId} date={it.date} status={it.status} />}
-                    </div>
+                    <span className="text-[10px] text-muted">
+                      {fmt(b.startMin)}
+                      {b.hasDuration ? `–${fmt(b.startMin + (it.durationMinutes as number))}` : ""}
+                    </span>
+                    {editable && (
+                      <div className="mt-auto pt-1">
+                        <StatusToggle taskId={it.taskId} date={it.date} status={it.status} compact />
+                      </div>
+                    )}
                   </div>
                 );
               })}
