@@ -67,6 +67,7 @@ export async function setStatus(taskId: string, date: string, pct: StatusPct): P
     .eq("date", date); // RLS: solo la propia instancia
   if (error) return { ok: false, error: error.message };
   revalidatePath("/tareas");
+  revalidatePath("/"); // la lista de hoy del home refleja el nuevo estado
   return { ok: true };
 }
 

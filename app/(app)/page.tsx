@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getProfile, getUser } from "@/lib/auth/server";
 import { DistributorDashboard } from "@/components/dashboard/distributor-dashboard";
 import { bogotaToday, summarizeWeek, weekStartMonday, type WeekRow } from "@/lib/dashboard/week";
-import type { TaskPriority } from "@/lib/tasks/types";
+import type { DayItem, StatusPct, TaskPriority, TaskRecurrence } from "@/lib/tasks/types";
 
 // "/" = DISPATCHER por rol (ADR-0009). El distribuidor ve su dashboard real; admin/auditor se enrutan.
 export default async function Home() {
@@ -45,5 +45,49 @@ export default async function Home() {
   const summary = summarizeWeek(rows);
   const pendingToday = rows.filter((r) => r.date === today && (r.status_pct ?? 0) < 100).length;
 
-  return <DistributorDashboard name={name} summary={summary} pendingToday={pendingToday} />;
+  // Tareas de HOY con contenido efectivo (coalesce override de la instancia / task) para la lista del home.
+  const { data: todayData } = await supabase
+    .from("task_instances")
+    .select("task_id, date, status_pct, title, time_slot, priority, tasks(title, time_slot, priority, recurrence, deleted_at)")
+    .eq("date", today);
+
+  type TaskEmbed = {
+    title: string | null;
+    time_slot: string | null;
+    priority: string | null;
+    recurrence: string | null;
+    deleted_at: string | null;
+  };
+  type TodayRaw = {
+    task_id: string;
+    date: string;
+    status_pct: number | null;
+    title: string | null;
+    time_slot: string | null;
+    priority: string | null;
+    tasks: TaskEmbed | TaskEmbed[] | null;
+  };
+
+  const todayItems: DayItem[] = ((todayData ?? []) as unknown as TodayRaw[])
+    .map((r) => ({ r, t: (Array.isArray(r.tasks) ? r.tasks[0] : r.tasks) ?? null }))
+    .filter(({ t }) => !t?.deleted_at) // oculta soft-deleted (filtrado de visualización, no RLS)
+    .map(({ r, t }) => ({
+      taskId: String(r.task_id),
+      date: String(r.date),
+      title: r.title ?? t?.title ?? "",
+      timeSlot: r.time_slot ?? t?.time_slot ?? null,
+      priority: (r.priority ?? t?.priority ?? "medium") as TaskPriority,
+      recurrence: (t?.recurrence ?? "once") as TaskRecurrence,
+      status: (r.status_pct ?? 0) as StatusPct,
+    }));
+
+  return (
+    <DistributorDashboard
+      name={name}
+      summary={summary}
+      pendingToday={pendingToday}
+      today={todayItems}
+      date={today}
+    />
+  );
 }

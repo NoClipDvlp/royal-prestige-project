@@ -51,6 +51,12 @@ function UserRow({ user, distributions }: { user: AdminUser; distributions: Dist
   const [pending, start] = useTransition();
   const needsDist = role === "distributor";
 
+  // Dirty-check: "Guardar" solo se habilita si hay un cambio real respecto al valor original.
+  const dirty =
+    name !== (user.full_name ?? "") ||
+    role !== (user.role ?? "") ||
+    dist !== (user.distribution_id ?? "");
+
   function save() {
     setMsg(null);
     start(async () => {
@@ -115,7 +121,7 @@ function UserRow({ user, distributions }: { user: AdminUser; distributions: Dist
         ))}
       </select>
       <div className="flex gap-2">
-        <Button onClick={save} disabled={pending} className="h-9 text-xs">Guardar</Button>
+        <Button onClick={save} disabled={pending || !dirty} className="h-9 text-xs">Guardar</Button>
         <Button variant="glass" onClick={reset} disabled={pending} className="h-9 text-xs">Reset</Button>
       </div>
       {msg ? <span className="text-xs text-muted sm:basis-full">{msg}</span> : null}

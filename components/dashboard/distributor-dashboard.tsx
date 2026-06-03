@@ -2,18 +2,24 @@ import type { ReactNode } from "react";
 import { CheckCircle2, CircleDashed, CircleDotDashed } from "lucide-react";
 import { GlassCard } from "@/components/ui/card";
 import { Greeting } from "@/components/greeting";
+import { TodayTasks } from "@/components/dashboard/today-tasks";
 import { cn } from "@/lib/cn";
 import type { WeekSummary } from "@/lib/dashboard/week";
+import type { DayItem } from "@/lib/tasks/types";
 
 /** Dashboard del distribuidor con datos reales (ADR-0009). Presentacional: recibe lo ya computado. */
 export function DistributorDashboard({
   name,
   summary,
   pendingToday,
+  today,
+  date,
 }: {
   name: string;
   summary: WeekSummary;
   pendingToday: number;
+  today: DayItem[];
+  date: string;
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -38,6 +44,8 @@ export function DistributorDashboard({
           <Stat label="Pendientes" value={summary.pending} icon={<CircleDashed size={18} />} />
         </div>
       </div>
+
+      <TodayTasks items={today} date={date} />
     </div>
   );
 }

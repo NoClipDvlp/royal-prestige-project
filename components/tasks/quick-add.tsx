@@ -66,7 +66,7 @@ export function QuickAdd({ date }: { date: string }) {
           </option>
         ))}
       </select>
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" disabled={pending || !title.trim()}>
         <Plus size={16} /> Añadir
       </Button>
       {error ? <p className="text-xs text-red-500 sm:basis-full">{error}</p> : null}
