@@ -133,11 +133,17 @@ un hito futuro se añade un job server-side; jamás en `NEXT_PUBLIC_*` ni en el 
 No hay admin sembrado. Tras desplegar:
 
 1. **Regístrate** en la app (`/signup`) y **confirma el email**.
-2. Hazte **admin** (SQL Editor):
+2. Hazte **admin** (SQL Editor). ⚠ **DEBT-0010:** el trigger `trg_users_no_priv_esc`
+   (`forbid_self_privilege_escalation`) bloquea cambiar `role` desde **SQL directo** (sin sesión de app →
+   `auth.uid()` null ≠ admin). Desactívalo **solo** durante este bootstrap del primer admin:
    ```sql
+   alter table public.users disable trigger trg_users_no_priv_esc;
    update public.users set role = 'admin' where email = '<tu-email>';
+   alter table public.users enable trigger trg_users_no_priv_esc;
    ```
    (Admin lleva `distribution_id = null`; el CHECK `rol↔distribución` lo exige.)
+   > Las asignaciones de rol POSTERIORES las hace el admin desde el **panel** (con su sesión → el trigger
+   > NO las bloquea), no por SQL directo. Solo este primer admin requiere el workaround.
 
 Para **probar tareas** necesitas un **distribuidor** (la acción `createTask` exige `role='distributor'`
 con `distribution_id`). El admin crea la distribución y asigna:
@@ -146,12 +152,16 @@ con `distribution_id`). El admin crea la distribución y asigna:
 insert into public.distributions (name) values ('Distribución A') returning id;
 
 -- 2) asignar a un usuario ya registrado+confirmado como distribuidor de esa distribución
+--    (mismo workaround DEBT-0010 si se hace por SQL directo; o hazlo desde el panel admin con sesión)
+alter table public.users disable trigger trg_users_no_priv_esc;
 update public.users
   set role = 'distributor', distribution_id = '<id-de-la-distribución>'
   where email = '<email-del-distribuidor>';
+alter table public.users enable trigger trg_users_no_priv_esc;
 ```
 > CHECK rol↔distribución: `distributor ⇒ distribution_id NOT NULL`; `admin/auditor ⇒ NULL`.
 > Un `auditor` se asigna con `role='auditor'` (sin distribución).
+> Una vez exista el **panel admin**, estas asignaciones se hacen desde la app (sesión admin) sin tocar el trigger.
 
 ---
 
