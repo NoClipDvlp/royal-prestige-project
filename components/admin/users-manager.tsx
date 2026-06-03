@@ -102,7 +102,7 @@ function UserRow({
   }
 
   return (
-    <li className="flex flex-col gap-2 border-b border-white/30 pb-3 last:border-0 dark:border-white/10 sm:flex-row sm:items-center">
+    <li className="flex flex-col gap-2 border-b border-white/30 pb-3 last:border-0 dark:border-white/10 sm:flex-row sm:flex-wrap sm:items-center">
       <div className="flex-1">
         <Input
           value={name}
