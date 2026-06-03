@@ -110,7 +110,7 @@ create trigger trg_ti_scope_immutable
 -- ── Quitar al distribuidor el hard-delete de tareas (integridad KPI). Solo admin. ──
 -- (La policy canónica se sincroniza en lib/rls-policies/policies.sql; esto la aplica a una DB ya desplegada.)
 alter policy tasks_delete on public.tasks
-  using (auth.current_role() = 'admin');
+  using (public.app_current_role() = 'admin');
 
 -- ── Programación diaria (pg_cron). GUARDADA: no rompe entornos sin pg_cron (p.ej. el harness). ──
 -- pg_cron debe habilitarse en el proyecto Supabase (DEBT-0006). 00:05 America/Bogota = 05:05 UTC (UTC-5, sin DST).

@@ -172,12 +172,12 @@ create table notifications (
 -- Helpers de identidad para RLS (SECURITY DEFINER, search_path='' anti-injection).
 -- Propietario = superuser (postgres en Supabase) → bypass-RLS → SIN recursión contra users.
 -- ----------------------------------------------------------------------------
-create or replace function auth.current_role()
+create or replace function public.app_current_role()
 returns public.app_role
 language sql stable security definer set search_path = ''
 as $$ select role from public.users where id = (select auth.uid()) $$;
 
-create or replace function auth.current_distribution()
+create or replace function public.app_current_distribution()
 returns uuid
 language sql stable security definer set search_path = ''
 as $$ select distribution_id from public.users where id = (select auth.uid()) $$;
@@ -243,7 +243,7 @@ create trigger trg_snapshot_no_delete before delete on metric_snapshots
 create or replace function public.forbid_self_privilege_escalation()
 returns trigger language plpgsql security definer set search_path = '' as $$
 begin
-  if (select auth.current_role()) is distinct from 'admin'::public.app_role then
+  if (select public.app_current_role()) is distinct from 'admin'::public.app_role then
     if new.role is distinct from old.role
        or new.distribution_id is distinct from old.distribution_id then
       raise exception 'no puedes cambiar tu rol o tu distribución';
