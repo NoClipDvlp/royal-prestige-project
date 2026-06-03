@@ -129,7 +129,7 @@ acceso del auditor a esa vista y quitarle el SELECT sobre la tabla `users` cruda
 
 ## DEBT-0005 — Repo en drive sincronizado (iCloud/Dropbox) — riesgo de corrupción de `.git`
 
-- **Estado:** abierta (riesgo ASUMIDO por Nicolas, 2026-06-02)
+- **Estado:** ✅ CERRADA (2026-06-03) — repo re-clonado a una ruta local NO sincronizada (`~/dev/royal-control`, fuera de iCloud). Condición de salida cumplida.
 - **Fecha de registro:** 2026-06-02
 - **Decisor (asumir como deuda):** Nicolas (humano) — decidió dejarlo y asumir el riesgo.
 - **Registró:** Orquestador (Claude Cowork)
@@ -145,10 +145,10 @@ Push a `origin` DESPUÉS DE CADA HITO, sin excepción → `origin` es la verdad 
 corrompe el local, se re-clona. El working tree local se trata como desechable.
 
 ### Condición de salida
-Mover / re-clonar el repo a una ruta local NO sincronizada.
+~~Mover / re-clonar el repo a una ruta local NO sincronizada.~~ ✅ Hecho (2026-06-03): re-clone a `~/dev/royal-control`, fuera del drive sincronizado. La mitigación de "push tras cada hito" deja de ser obligatoria por este motivo (sigue siendo buena práctica).
 
 ### Trazabilidad
-- Incidentes en Hitos 0–3. Relaciona: `DEBT-0001`
+- Incidentes en Hitos 0–3. Relaciona: `DEBT-0001`, `ADR-0011` (cerrada en el handoff del hito Tareas premium)
 
 ---
 

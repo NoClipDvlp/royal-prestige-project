@@ -41,7 +41,8 @@ ALTERs que dependen de objetos creados antes:
 | 3 | `db/migrations/0001_auditor_labels.sql` | Crea la vista `users_labels` y **ALTERa `users_select`** (creada en el paso 2). |
 | 4 | `db/migrations/0002_auth_profile.sql` | Triggers en `auth.users` / `auth.identities` (perfil al signup + sync de `auth_providers`). |
 | 5 | `db/migrations/0003_tasks_engine.sql` | Columnas + `is_task_due` + `materialize_day` + triggers + **ALTERa `tasks_delete`** + (intenta) el schedule de pg_cron. |
-| 6 | `db/seed/roles.sql` | Intencionalmente **sin INSERTs** (no hay categorías de fábrica ni admin hardcodeado). Puede omitirse; se incluye por completitud. |
+| 6 | `db/migrations/0004_tasks_premium.sql` | Duración (`tasks`/`task_instances` + CHECK tope 22:00 **sin wrap de medianoche**) + RPC `tasks_due_on(d)` `SECURITY INVOKER`. **ALTERa** `tasks`/`task_instances` y crea la función → **después** de 0003 (ADR-0011). |
+| 7 | `db/seed/roles.sql` | Intencionalmente **sin INSERTs** (no hay categorías de fábrica ni admin hardcodeado). Puede omitirse; se incluye por completitud. |
 
 **Vía A — SQL Editor (recomendado para la primera vez):** abre **SQL Editor**, y pega y ejecuta el
 contenido de cada archivo **uno por uno, en el orden de la tabla**. (El SQL Editor corre como `postgres`,
@@ -55,6 +56,7 @@ psql "$PG" -v ON_ERROR_STOP=1 -f lib/rls-policies/policies.sql
 psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0001_auditor_labels.sql
 psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0002_auth_profile.sql
 psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0003_tasks_engine.sql
+psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0004_tasks_premium.sql
 ```
 
 > Cualquier cambio futuro a estas rutas es **core** (ver `.ai/core/.coreignore`): requiere ADR + commit
@@ -202,7 +204,7 @@ alter table public.users enable trigger trg_users_no_priv_esc;
 - **DEBT-0006** (este deploy): proyecto Supabase + `pg_cron`. Al completar 1–8, queda **cerrada**.
 - **DEBT-0001 ítem 1** (billing de GitHub Actions): sigue abierto — el `core-guard` no corre hasta
   desbloquearlo. Conviene resolverlo **antes** de escribir más core.
-- **DEBT-0005** (repo en carpeta sincronizada): re-clonar a una ruta no sincronizada cuando puedas.
+- **DEBT-0005** (repo en carpeta sincronizada): ✅ **CERRADA** (2026-06-03, re-clone a ruta no sincronizada).
 - **DEBT-0007** (atomicidad de "este y los siguientes" / "este día futuro"): post-MVP salvo que se
   observe inconsistencia.
 - Las **migraciones y la RLS son core**: cualquier cambio futuro va por ADR + `[CORE-APPROVED]`.
