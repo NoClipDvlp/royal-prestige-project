@@ -9,8 +9,10 @@ import { WORKDAY_END, WORKDAY_START } from "@/lib/constants";
 import { cn } from "@/lib/cn";
 import type { DayItem, TaskPriority } from "@/lib/tasks/types";
 
-const ROW_H = 56; // px por hora
-const POINT_MIN = 30; // alto visual (y de cálculo de solape) de una tarea "punto" (sin duración)
+const ROW_H = 72; // px por hora (aire entre horas — sensación premium, sin amontonar)
+const POINT_MIN = 30; // minutos que ocupa un "punto" (sin duración) SOLO para el cálculo de solape
+const POINT_H = 64; // alto en px de un bloque "punto": cabe título + hora + toggle sin recortar
+const MIN_DUR_H = 46; // alto mínimo de un bloque con duración corta (p.ej. 30 min) para que sea legible
 const GUTTER = "3.25rem"; // ancho del carril de etiquetas de hora
 
 const PRIORITY_DOT: Record<TaskPriority, string> = {
@@ -192,9 +194,12 @@ export function DayView({
             <div className="relative h-full pr-1">
               {blocks.map((b) => {
                 const top = ((b.startMin - WORKDAY_START * 60) / 60) * ROW_H;
-                const rawH = b.hasDuration ? ((b.endMin - b.startMin) / 60) * ROW_H : ROW_H * 0.72;
-                const height = Math.max(28, Math.min(rawH, totalH - top));
+                const rawH = b.hasDuration ? ((b.endMin - b.startMin) / 60) * ROW_H : POINT_H;
+                const minH = b.hasDuration ? MIN_DUR_H : POINT_H;
+                // Deja ~6px de aire bajo el bloque para que no toque la línea de la hora siguiente.
+                const height = Math.max(minH, Math.min(rawH, totalH - top) - 6);
                 const widthPct = 100 / b.lanes;
+                const showToggle = editable && height >= 58; // hay sitio para el toggle de estado
                 const it = b.item;
                 return (
                   <div
@@ -212,7 +217,7 @@ export function DayView({
                     }}
                   >
                     <div className="flex items-start gap-1.5">
-                      <span className={cn("mt-1 h-2 w-2 shrink-0 rounded-full", PRIORITY_DOT[it.priority])} aria-hidden />
+                      <span className={cn("mt-0.5 h-2 w-2 shrink-0 rounded-full", PRIORITY_DOT[it.priority])} aria-hidden />
                       <span className="flex-1 truncate text-[13px] font-medium leading-tight text-fg">{it.title}</span>
                       {editable && (
                         <button
@@ -225,15 +230,13 @@ export function DayView({
                         </button>
                       )}
                     </div>
-                    <span className="text-[10px] text-muted">
-                      {fmt(b.startMin)}
-                      {b.hasDuration ? `–${fmt(b.startMin + (it.durationMinutes as number))}` : ""}
-                    </span>
-                    {editable && height >= 52 && (
-                      <div className="mt-auto">
-                        <StatusToggle taskId={it.taskId} date={it.date} status={it.status} />
-                      </div>
-                    )}
+                    <div className="mt-auto flex items-center justify-between gap-2">
+                      <span className="text-[10px] text-muted">
+                        {fmt(b.startMin)}
+                        {b.hasDuration ? `–${fmt(b.startMin + (it.durationMinutes as number))}` : ""}
+                      </span>
+                      {showToggle && <StatusToggle taskId={it.taskId} date={it.date} status={it.status} />}
+                    </div>
                   </div>
                 );
               })}
