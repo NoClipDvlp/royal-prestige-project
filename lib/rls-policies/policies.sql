@@ -129,9 +129,10 @@ create policy tasks_update on tasks for update using (
       and owner_user_id = (select auth.uid())
       and distribution_id = auth.current_distribution())
 );
+-- DELETE solo admin (ADR-0007): el distribuidor "borra" vía soft-delete (tasks.deleted_at, UPDATE self).
+-- Evita que un hard-delete (cascade a task_instances) borre historial de incumplimiento del período en curso.
 create policy tasks_delete on tasks for delete using (
   auth.current_role() = 'admin'
-  or (auth.current_role() = 'distributor' and owner_user_id = (select auth.uid()))
 );
 
 -- ============================ task_instances (distributor = SELECT/UPDATE self) ============================

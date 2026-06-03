@@ -44,8 +44,10 @@ echo "== fixtures ==";            run "$HERE/10_fixtures.sql"
 # explícitamente; con el trigger activo antes, handle_new_user duplicaría el INSERT en public.users.
 # En PRODUCCIÓN 0002 corre antes de cualquier signup (comportamiento idéntico; solo es orden de carga).
 echo "== migración 0002 (auth profile) =="; run "$ROOT/db/migrations/0002_auth_profile.sql"
+echo "== migración 0003 (tasks engine) =="; run "$ROOT/db/migrations/0003_tasks_engine.sql"
 echo "== tests de aislamiento (20) =="; run "$HERE/20_isolation_tests.sql"
 echo "== tests auditor labels (21) =="; run "$HERE/21_auditor_labels.sql"
 echo "== tests auth profile (22) =="; run "$HERE/22_auth_profile.sql"
+echo "== tests tasks engine (23) =="; run "$HERE/23_tasks_engine.sql"
 
 echo "RESULT=GREEN"

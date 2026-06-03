@@ -144,3 +144,29 @@ Mover / re-clonar el repo a una ruta local NO sincronizada.
 
 ### Trazabilidad
 - Incidentes en Hitos 0–3. Relaciona: `DEBT-0001`
+
+---
+
+## DEBT-0006 — Falta proyecto Supabase real + habilitar pg_cron (job de materialización)
+
+- **Estado:** abierta
+- **Fecha de registro:** 2026-06-02
+- **Decisor (asumir como deuda):** Nicolas (humano)
+- **Registró:** Orquestador (Claude Cowork)
+- **Severidad global:** media-alta — sin esto, el motor de tareas no genera instancias en producción.
+
+### Contexto
+El motor de tareas (ADR-0007) materializa las `task_instances` diarias con un job **pg_cron**
+(`materialize_day(app_today())`). En el harness de tests no hay pg_cron: el `cron.schedule` queda
+GUARDADO (`if exists pg_extension`) y `materialize_day()` se prueba llamándola directamente. Para que
+el job corra de verdad hace falta un **proyecto Supabase desplegado** con las migraciones `0000–0003`
+aplicadas y **pg_cron habilitado**. Además, sin proyecto real tampoco funcionan los flujos de auth
+end-to-end (login/signup/OAuth/confirmación de email — ver hito Auth).
+
+### Condición de salida
+Crear/conectar el proyecto Supabase, aplicar migraciones `0000–0003`, habilitar la extensión `pg_cron`
+y verificar que el schedule diario corre (instancias de hoy creadas). Configurar también env reales,
+Google OAuth y la confirmación de email obligatoria.
+
+### Trazabilidad
+- Relaciona: `ADR-0006`, `ADR-0007`, `db/migrations/0003_tasks_engine.sql`, `DEBT-0001`, `DEBT-0005`
