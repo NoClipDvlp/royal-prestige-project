@@ -42,7 +42,8 @@ ALTERs que dependen de objetos creados antes:
 | 4 | `db/migrations/0002_auth_profile.sql` | Triggers en `auth.users` / `auth.identities` (perfil al signup + sync de `auth_providers`). |
 | 5 | `db/migrations/0003_tasks_engine.sql` | Columnas + `is_task_due` + `materialize_day` + triggers + **ALTERa `tasks_delete`** + (intenta) el schedule de pg_cron. |
 | 6 | `db/migrations/0004_tasks_premium.sql` | Duración (`tasks`/`task_instances` + CHECK tope 22:00 **sin wrap de medianoche**) + RPC `tasks_due_on(d)` `SECURITY INVOKER`. **ALTERa** `tasks`/`task_instances` y crea la función → **después** de 0003 (ADR-0011). |
-| 7 | `db/seed/roles.sql` | Intencionalmente **sin INSERTs** (no hay categorías de fábrica ni admin hardcodeado). Puede omitirse; se incluye por completitud. |
+| 7 | `db/migrations/0005_metrics.sql` | Motor de métricas: `priority_weight`, `compliance_self` (`SECURITY INVOKER`), `compliance_ranking` (`SECURITY DEFINER` + gate de rol). Aditiva (solo funciones + grants) → **después** de 0004 (ADR-0012). |
+| 8 | `db/seed/roles.sql` | Intencionalmente **sin INSERTs** (no hay categorías de fábrica ni admin hardcodeado). Puede omitirse; se incluye por completitud. |
 
 **Vía A — SQL Editor (recomendado para la primera vez):** abre **SQL Editor**, y pega y ejecuta el
 contenido de cada archivo **uno por uno, en el orden de la tabla**. (El SQL Editor corre como `postgres`,
@@ -57,6 +58,7 @@ psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0001_auditor_labels.sql
 psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0002_auth_profile.sql
 psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0003_tasks_engine.sql
 psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0004_tasks_premium.sql
+psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0005_metrics.sql
 ```
 
 > Cualquier cambio futuro a estas rutas es **core** (ver `.ai/core/.coreignore`): requiere ADR + commit

@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Royal Control — SQL CONSOLIDADO DE DEPLOY (GENERADO — no editar a mano)
--- Fuente: migraciones + RLS del repo. Orden: 0000 → policies → 0001 → 0002 → 0003 → 0004.
+-- Fuente: migraciones + RLS del repo. Orden: 0000 → policies → 0001 → 0002 → 0003 → 0004 → 0005.
 -- Aplicar en Supabase (SQL Editor o psql). Ver docs/DEPLOY.md para el contexto
 -- (pg_cron, OAuth, confirmación de email, env, primer admin).
 -- Helpers de RLS en public.app_current_role/app_current_distribution (ADR-0008).
@@ -884,3 +884,118 @@ grant  execute on function public.tasks_due_on(date) to authenticated;
 -- Verificado (ADR-0011 §4): idx_ti_owner_date (owner_user_id, date) ya existe (0000_init §6) y cubre
 -- los listados por usuario+fecha. tasks_due_on filtra por RLS (idx_tasks_owner) + is_task_due (no
 -- indexable: función sobre la fila). NO se añade ningún índice (no hay faltante real).
+
+-- =====================================================================
+-- >>> db/migrations/0005_metrics.sql
+-- =====================================================================
+
+-- ============================================================================
+-- Royal Control — 0005_metrics  (NÚCLEO / CORE)
+-- ============================================================================
+-- ⚠ ARCHIVO CORE (.coreignore: db/migrations/). Autorizado por ADR-0012.
+-- Cambios requieren ADR + [CORE-APPROVED: ADR-XXXX]. Commit con [CORE-APPROVED: ADR-0012].
+--
+-- Motor de MÉTRICAS vivo (SPEC §8, ADR-0012): cumplimiento ponderado por prioridad.
+--   compliance_pct = round( Σ(w·status_pct)::numeric / NULLIF(Σ(w),0) ),  w = priority_weight(coalesce(ti.priority,t.priority))
+-- NO filtra deleted_at (borradas cuentan, ADR-0007). d_end capado a app_today().
+-- ============================================================================
+
+-- ── 1. Peso por prioridad ─────────────────────────────────────────────────────
+create or replace function public.priority_weight(p public.task_priority)
+returns int
+language sql
+immutable
+set search_path = ''
+as $$
+  select case p when 'high' then 3 when 'medium' then 2 when 'low' then 1 end
+$$;
+
+-- ── 2. KPI propio (SECURITY INVOKER → respeta la RLS self) ────────────────────
+create or replace function public.compliance_self(d_start date, d_end date)
+returns table (
+  total          int,
+  done           int,
+  half           int,
+  undone         int,
+  compliance_pct int
+)
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select
+    count(*)::int,
+    count(*) filter (where ti.status_pct = 100)::int,
+    count(*) filter (where ti.status_pct = 50)::int,
+    count(*) filter (where ti.status_pct = 0)::int,
+    round(
+      sum(public.priority_weight(coalesce(ti.priority, t.priority)) * ti.status_pct)::numeric
+      / nullif(sum(public.priority_weight(coalesce(ti.priority, t.priority))), 0)
+    )::int
+  from public.task_instances ti
+  join public.tasks t on t.id = ti.task_id
+  where ti.date between d_start and least(d_end, public.app_today());
+$$;
+
+-- ── 3. Ranking admin/auditor (SECURITY DEFINER + gate de rol; solo agregados + ids) ──
+create or replace function public.compliance_ranking(d_start date, d_end date)
+returns table (
+  grain           text,
+  user_id         uuid,
+  distribution_id uuid,
+  total           int,
+  done            int,
+  half            int,
+  undone          int,
+  compliance_pct  int
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if (select public.app_current_role()) not in ('admin'::public.app_role, 'auditor'::public.app_role) then
+    return;  -- gate fail-closed → 0 filas
+  end if;
+
+  return query
+  with base as (
+    select
+      ti.owner_user_id,
+      ti.distribution_id,
+      ti.status_pct,
+      public.priority_weight(coalesce(ti.priority, t.priority)) as w
+    from public.task_instances ti
+    join public.tasks t on t.id = ti.task_id
+    join public.users u on u.id = ti.owner_user_id and u.role = 'distributor'::public.app_role
+    where ti.date between d_start and least(d_end, public.app_today())
+  )
+  select
+    'user'::text, b.owner_user_id, b.distribution_id,
+    count(*)::int,
+    count(*) filter (where b.status_pct = 100)::int,
+    count(*) filter (where b.status_pct = 50)::int,
+    count(*) filter (where b.status_pct = 0)::int,
+    round(sum(b.w * b.status_pct)::numeric / nullif(sum(b.w), 0))::int
+  from base b
+  group by b.owner_user_id, b.distribution_id
+  union all
+  select
+    'distribution'::text, null::uuid, b.distribution_id,
+    count(*)::int,
+    count(*) filter (where b.status_pct = 100)::int,
+    count(*) filter (where b.status_pct = 50)::int,
+    count(*) filter (where b.status_pct = 0)::int,
+    round(sum(b.w * b.status_pct)::numeric / nullif(sum(b.w), 0))::int
+  from base b
+  group by b.distribution_id;
+end $$;
+
+revoke execute on function public.priority_weight(public.task_priority) from public;
+grant  execute on function public.priority_weight(public.task_priority) to authenticated;
+revoke execute on function public.compliance_self(date, date) from public;
+grant  execute on function public.compliance_self(date, date) to authenticated;
+revoke execute on function public.compliance_ranking(date, date) from public;
+grant  execute on function public.compliance_ranking(date, date) to authenticated;
