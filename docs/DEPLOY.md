@@ -120,11 +120,16 @@ flujo `/auth/callback` (recovery → `?next=/auth/reset?mode=update`).
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
+# Server-only (panel admin: alta/reset de usuarios vía API admin de GoTrue). NO lleva prefijo NEXT_PUBLIC.
+SUPABASE_SERVICE_ROLE_KEY=<service-role-secret-key>
 ```
-**Vercel (Project → Settings → Environment Variables):** las mismas dos, para Production y Preview.
+**Vercel (Project → Settings → Environment Variables):** las dos `NEXT_PUBLIC_*` (Production + Preview)
+**y** `SUPABASE_SERVICE_ROLE_KEY` como variable **server-only** (sin prefijo `NEXT_PUBLIC` → no se expone al cliente).
 
-⚠ La **service_role** key NO se pone aquí (es del cliente). Solo iría en variables **server-only** si en
-un hito futuro se añade un job server-side; jamás en `NEXT_PUBLIC_*` ni en el repo.
+⚠ La **`service_role` / "secret key"** de Supabase: SOLO server-side. La usa `lib/supabase/admin.ts`
+(marcado `import "server-only"`) desde server actions GATEADAS por `assertCallerIsAdmin()`. **Bypasea la RLS**
+→ trátala como la llave maestra: NUNCA `NEXT_PUBLIC_*`, nunca en el cliente, nunca en el repo (`.env*` ya está
+gitignored). La `anon key` (pública) es la única que va al navegador.
 
 ---
 
