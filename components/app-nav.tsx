@@ -1,20 +1,40 @@
 "use client";
 
+import type { ComponentType } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Home, ListTodo, Settings } from "lucide-react";
+import { BarChart3, Home, ListTodo, Settings, Shield } from "lucide-react";
 import { cn } from "@/lib/cn";
+import type { AppRole } from "@/lib/auth/server";
 
-const tabs = [
+type Tab = { href: string; label: string; icon: ComponentType<{ size?: number }> };
+
+const DISTRIBUTOR: Tab[] = [
   { href: "/", label: "Inicio", icon: Home },
   { href: "/tareas", label: "Tareas", icon: ListTodo },
   { href: "/metricas", label: "Métricas", icon: BarChart3 },
   { href: "/ajustes", label: "Ajustes", icon: Settings },
-] as const;
+];
+const ADMIN: Tab[] = [
+  { href: "/admin", label: "Admin", icon: Shield },
+  { href: "/metricas", label: "Métricas", icon: BarChart3 },
+  { href: "/ajustes", label: "Ajustes", icon: Settings },
+];
+const AUDITOR: Tab[] = [
+  { href: "/metricas", label: "Métricas", icon: BarChart3 },
+  { href: "/ajustes", label: "Ajustes", icon: Settings },
+];
 
-/** Tab bar flotante estilo app (glass). Icono siempre; etiqueta visible en el activo / en ≥sm. */
-export function AppNav() {
+function tabsFor(role: AppRole | null): Tab[] {
+  if (role === "admin") return ADMIN;
+  if (role === "auditor") return AUDITOR;
+  return DISTRIBUTOR; // distributor (y por defecto)
+}
+
+/** Tab bar flotante glass, role-aware (ADR-0009). */
+export function AppNav({ role }: { role: AppRole | null }) {
   const pathname = usePathname();
+  const tabs = tabsFor(role);
   return (
     <nav className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
       <div className="glass flex items-center gap-1 rounded-full p-1.5">

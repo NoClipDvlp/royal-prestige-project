@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { mockUser, mockWeekly } from "@/lib/mock";
 
 function partOfDay(hour: number): string {
   if (hour < 12) return "buenos días";
@@ -9,8 +8,8 @@ function partOfDay(hour: number): string {
   return "buenas noches";
 }
 
-/** Saludo estilo Apple (SPEC §11). La franja se calcula en el cliente (evita desajuste SSR/CSR). */
-export function Greeting() {
+/** Saludo estilo Apple (SPEC §11) con datos REALES. La franja se calcula en cliente (evita desajuste SSR). */
+export function Greeting({ name, goalPct, pending }: { name: string; goalPct: number; pending: number }) {
   const [hour, setHour] = useState<number | null>(null);
   useEffect(() => setHour(new Date().getHours()), []);
 
@@ -21,13 +20,12 @@ export function Greeting() {
     <div className="space-y-1">
       <p className="text-sm text-muted">{greetCap}</p>
       <h1 className="text-3xl font-semibold tracking-tight text-fg sm:text-4xl">
-        Hola {mockUser.name}
+        Hola {name}
         {greet ? `, ${greet}.` : "."}
       </h1>
       <p className="text-base text-muted">
-        Vas en <span className="font-semibold text-fg">{mockWeekly.goalPct}%</span> de tu meta
-        semanal — te faltan <span className="font-semibold text-fg">{mockWeekly.pending}</span>{" "}
-        pendientes.
+        Vas en <span className="font-semibold text-fg">{goalPct}%</span> de tu meta semanal — te faltan{" "}
+        <span className="font-semibold text-fg">{pending}</span> pendientes.
       </p>
     </div>
   );
