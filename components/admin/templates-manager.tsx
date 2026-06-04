@@ -14,14 +14,17 @@ import {
   type TaskRecurrence,
 } from "@/lib/tasks/types";
 import {
+  countItemLinkedTasks,
   createTemplate,
   createTemplateItem,
   deleteTemplateItem,
+  propagateTemplate,
   softDeleteTemplate,
   updateTemplate,
   updateTemplateItem,
   type TemplateItemInput,
 } from "@/lib/actions/templates";
+import { Users } from "lucide-react";
 
 export type CatOption = { id: string; name: string };
 export type AdminTemplateItem = {
@@ -100,6 +103,8 @@ function TemplateCard({ template, categories }: { template: AdminTemplate; categ
   const [name, setName] = useState(template.name);
   const [desc, setDesc] = useState(template.description ?? "");
   const [adding, setAdding] = useState(false);
+  const [propOpen, setPropOpen] = useState(false);
+  const [propMsg, setPropMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -119,6 +124,18 @@ function TemplateCard({ template, categories }: { template: AdminTemplate; categ
     start(async () => {
       const r = await softDeleteTemplate(template.id);
       if (!r.ok) setErr(r.error ?? "Error");
+    });
+  }
+  function propagate() {
+    setErr(null);
+    setPropMsg(null);
+    start(async () => {
+      const r = await propagateTemplate(template.id);
+      if (!r.ok) setErr(r.error ?? "Error");
+      else {
+        setPropOpen(false);
+        setPropMsg("Cambios aplicados a los asignados (sin pisar lo que cada distribuidor editó).");
+      }
     });
   }
 
@@ -162,19 +179,53 @@ function TemplateCard({ template, categories }: { template: AdminTemplate; categ
         )}
       </div>
 
-      {adding ? (
+      <div className="mt-3 flex flex-wrap items-center gap-4">
+        {!adding && (
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="inline-flex items-center gap-1 text-xs font-medium text-accent transition hover:brightness-110"
+          >
+            <Plus size={14} /> Añadir tarea
+          </button>
+        )}
+        {!propOpen && (
+          <button
+            type="button"
+            onClick={() => {
+              setPropOpen(true);
+              setPropMsg(null);
+            }}
+            className="inline-flex items-center gap-1 text-xs font-medium text-accent transition hover:brightness-110"
+          >
+            <Users size={14} /> Aplicar a asignados
+          </button>
+        )}
+      </div>
+
+      {adding && (
         <div className="mt-2">
           <ItemForm templateId={template.id} categories={categories} onDone={() => setAdding(false)} />
         </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setAdding(true)}
-          className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-accent transition hover:brightness-110"
-        >
-          <Plus size={14} /> Añadir tarea
-        </button>
       )}
+      {propOpen && (
+        <div className="mt-2 rounded-xl border border-white/60 bg-white/50 p-3 dark:border-white/10 dark:bg-white/5">
+          <p className="text-xs font-medium text-fg">Aplicar a distribuidores asignados</p>
+          <p className="mt-1 text-[11px] text-muted">
+            Actualiza las tareas YA asignadas con la definición actual de la plantilla. No sobrescribe lo que
+            cada distribuidor haya editado, ni su historial. “Solo futuras” = no aplicar nada ahora.
+          </p>
+          <div className="mt-2 flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setPropOpen(false)} disabled={pending} className="h-8 text-xs">
+              Solo futuras
+            </Button>
+            <Button onClick={propagate} disabled={pending} className="h-8 text-xs">
+              Aplicar a asignados
+            </Button>
+          </div>
+        </div>
+      )}
+      {propMsg ? <p className="mt-2 text-xs text-positive">{propMsg}</p> : null}
       {err ? <p className="mt-2 text-xs text-red-500">{err}</p> : null}
     </div>
   );
@@ -204,8 +255,16 @@ function ItemRow({ item, catName, categories }: { item: AdminTemplateItem; catNa
       <button
         type="button"
         onClick={() => {
-          if (!confirm(`¿Quitar "${item.title}" de la plantilla?`)) return;
-          start(() => { void deleteTemplateItem(item.id); });
+          start(async () => {
+            const c = await countItemLinkedTasks(item.id);
+            const n = c.ok ? c.count ?? 0 : 0;
+            const msg =
+              n > 0
+                ? `Quitar "${item.title}"? ${n} tarea(s) asignada(s) se desvincularán (siguen vivas, sin plantilla).`
+                : `¿Quitar "${item.title}" de la plantilla?`;
+            if (!window.confirm(msg)) return;
+            await deleteTemplateItem(item.id);
+          });
         }}
         aria-label="Quitar tarea"
         className={cnRed(pending)}

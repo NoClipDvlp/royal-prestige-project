@@ -275,3 +275,64 @@ export async function previewTemplateAssignment(
   }
   return { ok: true, warnings };
 }
+
+// ── Fase 2c: propagación no-destructiva al editar la plantilla (ADR-0016) ──
+
+/**
+ * Aplica la definición ACTUAL de cada item de la plantilla a las tareas vinculadas que el distribuidor NO
+ * editó (customized_at IS NULL), vivas (deleted_at IS NULL) y de asignados ACTIVOS. NUNCA toca task_instances
+ * (KPI/overrides intactos por coalesce). Idempotente. "Solo futuras" = no llamar a esto (no-op).
+ * ⚠ N updates (uno por item) no transaccionales (DEBT-0007); re-ejecutable sin daño.
+ */
+export async function propagateTemplate(templateId: string): Promise<Result> {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+  const supabase = await createSupabaseServerClient();
+  const { data: itemsData } = await supabase
+    .from("template_items")
+    .select("id, title, category_id, priority, recurrence, time_slot, duration_minutes")
+    .eq("template_id", templateId);
+  const items = (itemsData ?? []) as ItemRow[];
+  if (items.length === 0) return { ok: true };
+  const { data: act } = await supabase
+    .from("template_assignments")
+    .select("user_id")
+    .eq("template_id", templateId)
+    .eq("active", true);
+  const userIds = ((act ?? []) as { user_id: string }[]).map((a) => a.user_id);
+  if (userIds.length === 0) return { ok: true };
+
+  for (const it of items) {
+    const { error } = await supabase
+      .from("tasks")
+      .update({
+        title: it.title,
+        category_id: it.category_id,
+        priority: it.priority,
+        recurrence: it.recurrence,
+        time_slot: it.time_slot,
+        duration_minutes: it.duration_minutes,
+      })
+      .eq("template_item_id", it.id)
+      .is("customized_at", null) // respeta lo que el distribuidor editó (lo marca el trigger 0010)
+      .is("deleted_at", null)
+      .in("owner_user_id", userIds);
+    if (error) return { ok: false, error: error.message };
+  }
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+/** Cuenta las tareas vivas vinculadas a un item — para avisar antes de hard-borrarlo (SET NULL desvincula). */
+export async function countItemLinkedTasks(itemId: string): Promise<{ ok: boolean; count?: number; error?: string }> {
+  const denied = await requireAdmin();
+  if (denied) return { ok: false, error: denied.error };
+  const supabase = await createSupabaseServerClient();
+  const { count, error } = await supabase
+    .from("tasks")
+    .select("id", { count: "exact", head: true })
+    .eq("template_item_id", itemId)
+    .is("deleted_at", null);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, count: count ?? 0 };
+}
