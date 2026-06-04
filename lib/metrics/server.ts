@@ -214,3 +214,44 @@ export async function breakdownByDims(supabase: DB, userId: string, today: strin
   ]);
   return { category, priority };
 }
+
+type SeriesByUserRow = {
+  user_id: string;
+  bucket_start: string;
+  total: number;
+  done: number;
+  half: number;
+  undone: number;
+  compliance_pct: number | null;
+};
+
+/**
+ * Sparkline por distribuidor para el ranking (ADR-0014): UNA llamada (compliance_series_by_user, semanal,
+ * ~12 sem) devuelve la serie de TODOS → se agrupa y densifica por user_id. Buckets sin datos = pct null
+ * (el sparkline rompe la línea en el hueco). Graceful: si 0009 no está aplicado → {}.
+ */
+export async function sparklinesByUser(supabase: DB, today: string): Promise<Record<string, SeriesPoint[]>> {
+  const start = weekStartMonday(addDays(today, -7 * 11)); // 12 semanas (incluida la actual)
+  const { data, error } = await supabase.rpc("compliance_series_by_user", {
+    d_start: start,
+    d_end: today,
+    bucket: "week",
+  });
+  if (error || !data) return {};
+  const weeks = expectedBuckets("week", start, today);
+  const byUser = new Map<string, Map<string, SeriesByUserRow>>();
+  for (const r of data as SeriesByUserRow[]) {
+    if (!byUser.has(r.user_id)) byUser.set(r.user_id, new Map());
+    byUser.get(r.user_id)?.set(r.bucket_start, r);
+  }
+  const out: Record<string, SeriesPoint[]> = {};
+  for (const [uid, m] of byUser) {
+    out[uid] = weeks.map((bs) => {
+      const r = m.get(bs);
+      return r
+        ? { bucketStart: bs, total: r.total ?? 0, done: r.done ?? 0, half: r.half ?? 0, undone: r.undone ?? 0, pct: r.compliance_pct ?? null }
+        : { bucketStart: bs, ...EMPTY_STAT };
+    });
+  }
+  return out;
+}

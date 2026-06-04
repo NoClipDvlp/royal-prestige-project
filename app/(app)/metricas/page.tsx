@@ -6,7 +6,7 @@ import { PageTitle } from "@/components/page-title";
 import { GlassCard } from "@/components/ui/card";
 import { ComplianceCard } from "@/components/metrics/compliance-card";
 import { RankingView } from "@/components/metrics/ranking-view";
-import { complianceByRanges, rankingByRanges } from "@/lib/metrics/server";
+import { complianceByRanges, rankingByRanges, sparklinesByUser } from "@/lib/metrics/server";
 import { bogotaToday } from "@/lib/dashboard/week";
 
 // Métricas (ADR-0012). Role-aware: admin/auditor → ranking comparativo; distribuidor → sus métricas.
@@ -37,8 +37,11 @@ async function MetricsData({ role }: { role: AppRole }) {
   const today = bogotaToday();
 
   if (role === "admin" || role === "auditor") {
-    const ranking = await rankingByRanges(supabase, today);
-    return <RankingView data={ranking} />;
+    const [ranking, sparklines] = await Promise.all([
+      rankingByRanges(supabase, today),
+      sparklinesByUser(supabase, today),
+    ]);
+    return <RankingView data={ranking} sparklines={sparklines} />;
   }
   // distribuidor (y jd/seller futuros): sus propias métricas (compliance_self) — NO el ranking (gate → 0 filas).
   const compliance = await complianceByRanges(supabase, today);

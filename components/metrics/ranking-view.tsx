@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { GlassCard } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
+import { Sparkline } from "@/components/metrics/sparkline";
 import { cn } from "@/lib/cn";
 import {
   GRAIN_LABEL,
@@ -13,6 +14,7 @@ import {
   type RankGrain,
   type RankingByRange,
   type RankRow,
+  type SeriesPoint,
 } from "@/lib/metrics/types";
 
 const RANGE_OPTS = (["day", "week", "month"] as ComplianceRange[]).map((r) => ({ value: r, label: RANGE_LABEL[r] }));
@@ -28,7 +30,13 @@ function sortRows(rows: RankRow[]): RankRow[] {
  * (por distribuidor / por distribución). Solo agregados + nombre (users_labels / distributions); cero PII
  * de fila. Vista compacta v1. El cliente conmuta en memoria (los 3 rangos vienen precalculados).
  */
-export function RankingView({ data }: { data: RankingByRange }) {
+export function RankingView({
+  data,
+  sparklines,
+}: {
+  data: RankingByRange;
+  sparklines?: Record<string, SeriesPoint[]>;
+}) {
   const [range, setRange] = useState<ComplianceRange>("week");
   const [grain, setGrain] = useState<RankGrain>("user");
 
@@ -58,6 +66,11 @@ export function RankingView({ data }: { data: RankingByRange }) {
                     {r.done}✓ · {r.half}◑ · {r.undone}○
                   </p>
                 </div>
+                {grain === "user" && (
+                  <span className="hidden shrink-0 sm:block">
+                    <Sparkline points={sparklines?.[r.id] ?? []} />
+                  </span>
+                )}
                 <span
                   className={cn(
                     "shrink-0 text-right text-sm font-semibold tabular-nums",
