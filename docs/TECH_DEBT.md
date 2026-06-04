@@ -296,3 +296,33 @@ Cumplida. Mantener la idempotencia al añadir futuras migraciones al consolidado
 
 ### Trazabilidad
 - Relaciona: `docs/deploy/consolidated.sql`, `docs/DEPLOY.md`, `DEBT-0006`, `ADR-0011`, `ADR-0012`
+
+---
+
+## DEBT-0012 — El harness de tests comparte DB sin aislar fixtures entre archivos
+
+- **Estado:** abierta (mitigada hoy con años disjuntos — frágil)
+- **Fecha de registro:** 2026-06-03
+- **Decisor (asumir como deuda):** Nicolas (humano)
+- **Registró:** Orquestador (Claude Cowork)
+- **Severidad global:** media — no afecta producción; fragiliza los tests (falsos fallos por colisión de datos).
+
+### Contexto
+`db/tests/run.sh` carga todos los `2X_*.sql` sobre el MISMO Postgres efímero, en secuencia, sin limpiar
+fixtures entre archivos. Las fixtures de un archivo quedan visibles para los siguientes. Al añadir
+`26_bi.sql` (ADR-0013), su rango de enero-2020 capturó instancias de `a1` creadas por `25_metrics.sql`
+(2020-01-15/16) → el conteo de buckets dio 5 en vez de 3. Se evitó moviendo TODAS las fixtures de 26 a
+**2021** (año libre), pero depender de "años disjuntos por archivo" no escala: cada test nuevo debe
+conocer las fechas de todos los anteriores.
+
+### Impacto mientras la deuda esté abierta
+- Riesgo de falsos fallos/positivos si dos archivos de test usan fechas/usuarios solapados.
+- Cada autor de test debe rastrear las fechas usadas por los demás (carga cognitiva, frágil).
+
+### Condición de salida
+Aislar fixtures por archivo, p. ej.: (a) envolver cada `2X_*.sql` en `begin … rollback` con las
+fixtures dentro (como ya hacen los sub-tests de RLS), o (b) `truncate` de las tablas de fixtures entre
+archivos en `run.sh`, o (c) un savepoint por archivo. Con eso, ningún test depende de años disjuntos.
+
+### Trazabilidad
+- Relaciona: `db/tests/run.sh`, `db/tests/26_bi.sql`, `db/tests/25_metrics.sql`, `ADR-0013`
