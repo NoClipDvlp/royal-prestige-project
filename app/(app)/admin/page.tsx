@@ -1,6 +1,7 @@
 import { getUser, requireRole } from "@/lib/auth/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageTitle } from "@/components/page-title";
+import { AdminTabs } from "@/components/admin/admin-tabs";
 import { CreateUser } from "@/components/admin/create-user";
 import { UsersManager, type AdminUser, type Dist } from "@/components/admin/users-manager";
 import { DistributionsManager } from "@/components/admin/distributions-manager";
@@ -11,19 +12,20 @@ import {
   type AdminTemplateItem,
   type CatOption,
 } from "@/components/admin/templates-manager";
+import { TemplateAssignment, type AsgDistributor } from "@/components/admin/template-assignment";
 import type { TaskPriority, TaskRecurrence } from "@/lib/tasks/types";
 
-// Panel admin (ADR-0009). requireRole('admin') + datos vía sesión admin (RLS admin = ve todo).
+// Panel admin (ADR-0009 + ADR-0015 Fase 2b). requireRole('admin') + datos vía sesión admin (RLS admin).
+// Reorganizado en tabs (Usuarios / Organización / Plantillas) — agrupa los managers existentes sin reescribirlos.
 export default async function AdminPage() {
   await requireRole("admin");
   const me = await getUser();
   const supabase = await createSupabaseServerClient();
 
-  const [usersRes, distRes, catRes, tplRes] = await Promise.all([
+  const [usersRes, distRes, catRes, tplRes, asgRes] = await Promise.all([
     supabase.from("users").select("id, full_name, email, role, distribution_id"),
     supabase.from("distributions").select("id, name"),
     supabase.from("task_categories").select("id, name").eq("scope", "global"),
-    // Plantillas + items (RLS admin; 0008). Graceful: si 0008 no está aplicado → data null → lista vacía.
     supabase
       .from("task_templates")
       .select(
@@ -31,6 +33,8 @@ export default async function AdminPage() {
       )
       .is("deleted_at", null)
       .order("created_at"),
+    // Asignaciones activas (0008). Graceful: si 0008 no está aplicado → null → matriz vacía.
+    supabase.from("template_assignments").select("template_id, user_id").eq("active", true),
   ]);
 
   const users = (usersRes.data ?? []) as unknown as AdminUser[];
@@ -67,14 +71,57 @@ export default async function AdminPage() {
       .sort((a, b) => (a.timeSlot ?? "99:99").localeCompare(b.timeSlot ?? "99:99")),
   }));
 
+  // Asignación: distribuidores (con nombre de distribución) + set de asignaciones activas.
+  const distName = new Map(distributions.map((d) => [d.id, d.name]));
+  const distributors: AsgDistributor[] = users
+    .filter((u) => u.role === "distributor")
+    .map((u) => ({
+      id: u.id,
+      name: u.full_name ?? "—",
+      distributionName: u.distribution_id ? distName.get(u.distribution_id) ?? "—" : "—",
+    }));
+  const assigned = ((asgRes.data ?? []) as unknown as { template_id: string; user_id: string }[]).map(
+    (a) => `${a.template_id}:${a.user_id}`,
+  );
+  const asgTemplates = templates.map((t) => ({ id: t.id, name: t.name }));
+
   return (
     <div className="flex flex-col gap-5">
-      <PageTitle title="Administración" subtitle="Usuarios, distribuciones, categorías y plantillas." />
-      <CreateUser />
-      <UsersManager users={users} distributions={distributions} currentAdminId={me?.id ?? ""} />
-      <DistributionsManager distributions={distributions} />
-      <CategoriesManager categories={categories} />
-      <TemplatesManager templates={templates} categories={categories} />
+      <PageTitle title="Administración" subtitle="Usuarios, organización y plantillas." />
+      <AdminTabs
+        tabs={[
+          {
+            id: "usuarios",
+            label: "Usuarios",
+            content: (
+              <>
+                <CreateUser />
+                <UsersManager users={users} distributions={distributions} currentAdminId={me?.id ?? ""} />
+              </>
+            ),
+          },
+          {
+            id: "organizacion",
+            label: "Organización",
+            content: (
+              <>
+                <DistributionsManager distributions={distributions} />
+                <CategoriesManager categories={categories} />
+              </>
+            ),
+          },
+          {
+            id: "plantillas",
+            label: "Plantillas",
+            content: (
+              <>
+                <TemplatesManager templates={templates} categories={categories} />
+                <TemplateAssignment distributors={distributors} templates={asgTemplates} assigned={assigned} />
+              </>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }
