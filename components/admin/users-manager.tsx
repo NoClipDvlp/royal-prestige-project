@@ -6,6 +6,7 @@ import { useDensity } from "@/components/ui/density";
 import { GlassCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/cn";
 import { densityClasses } from "@/lib/density";
 import { assignUserRole, updateUserName, adminResetPassword } from "@/lib/actions/admin";
@@ -28,9 +29,6 @@ const ROLES = [
   { value: "auditor", label: "Auditor" },
   { value: "admin", label: "Admin" },
 ] as const;
-
-const selectCls =
-  "rounded-xl border border-white/70 bg-white/50 px-2.5 py-2 text-sm text-fg dark:border-white/10 dark:bg-white/5";
 
 export function UsersManager({
   users,
@@ -120,8 +118,7 @@ function UserRow({
         />
         <span className="text-xs text-muted">{user.email ?? "—"}</span>
       </div>
-      <select
-        className={selectCls}
+      <Select
         value={role}
         onChange={(e) => {
           setRole(e.target.value);
@@ -134,9 +131,8 @@ function UserRow({
             {r.label}
           </option>
         ))}
-      </select>
-      <select
-        className={selectCls}
+      </Select>
+      <Select
         value={dist}
         onChange={(e) => setDist(e.target.value)}
         disabled={!needsDist}
@@ -148,17 +144,18 @@ function UserRow({
             {d.name}
           </option>
         ))}
-      </select>
+      </Select>
       <div className="flex gap-2">
-        <Button onClick={save} disabled={pending || !dirty} className="h-9 text-xs">Guardar</Button>
-        <Button variant="glass" onClick={reset} disabled={pending} className="h-9 text-xs">Reset</Button>
+        <Button onClick={save} disabled={pending || !dirty} size="sm">Guardar</Button>
+        <Button variant="secondary" onClick={reset} disabled={pending} size="sm">Reset</Button>
         {!isSelf ? (
           <Button
-            variant="glass"
+            variant="danger"
+            size="sm"
             onClick={() => setConfirmDelete(true)}
             disabled={pending}
             aria-label="Eliminar usuario"
-            className="h-9 px-2.5 text-xs text-red-500 hover:text-red-600"
+            className="px-2.5"
           >
             <Trash2 size={14} />
           </Button>

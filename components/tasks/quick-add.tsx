@@ -4,12 +4,10 @@ import { useEffect, useRef, useState, useTransition, type FormEvent } from "reac
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { createTask } from "@/lib/actions/tasks";
 import { WORKDAY_END, WORKDAY_START } from "@/lib/constants";
 import { RECURRENCE_LABEL, type TaskRecurrence } from "@/lib/tasks/types";
-
-const selectCls =
-  "rounded-2xl border border-white/70 bg-white/50 px-3 py-2.5 text-sm text-fg outline-none dark:border-white/10 dark:bg-white/5";
 
 /**
  * Alta rápida (regla de oro): título + hora + recurrencia → una tarea en < 1 min, mínimos clicks.
@@ -69,15 +67,14 @@ export function QuickAdd({
         className="flex-1"
         aria-label="Título de la tarea"
       />
-      <select className={selectCls} value={hour} onChange={(e) => setHour(Number(e.target.value))} aria-label="Hora">
+      <Select value={hour} onChange={(e) => setHour(Number(e.target.value))} aria-label="Hora">
         {hours.map((h) => (
           <option key={h} value={h}>
             {String(h).padStart(2, "0")}:00
           </option>
         ))}
-      </select>
-      <select
-        className={selectCls}
+      </Select>
+      <Select
         value={recurrence}
         onChange={(e) => setRecurrence(e.target.value as TaskRecurrence)}
         aria-label="Recurrencia"
@@ -87,7 +84,7 @@ export function QuickAdd({
             {RECURRENCE_LABEL[r]}
           </option>
         ))}
-      </select>
+      </Select>
       <Button type="submit" disabled={pending || !title.trim()}>
         <Plus size={16} /> Añadir
       </Button>

@@ -6,6 +6,9 @@ export type Density = "compact" | "comfortable";
 
 export const DENSITY_COOKIE = "rc-density";
 
+/** Hover sutil para filas de lista accionables (Tanda 5). No depende de densidad. */
+export const ROW_HOVER = "transition-colors hover:bg-white/40 dark:hover:bg-white/5";
+
 /** Normaliza el valor de la cookie (server o client). Default: ampliada (comfortable). */
 export function parseDensity(value: string | null | undefined): Density {
   return value === "compact" ? "compact" : "comfortable";

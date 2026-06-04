@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { Maximize2, Minimize2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { DENSITY_COOKIE, type Density } from "@/lib/density";
 
 type DensityCtx = { density: Density; toggle: () => void };
@@ -33,13 +34,8 @@ export const useDensity = (): DensityCtx => useContext(Ctx);
 export function DensityToggle() {
   const { density, toggle } = useDensity();
   return (
-    <button
-      type="button"
-      onClick={toggle}
-      aria-label="Cambiar densidad de la vista"
-      className="grid h-9 w-9 place-items-center rounded-full glass text-fg transition hover:scale-105 active:scale-95"
-    >
+    <Button variant="secondary" size="icon" onClick={toggle} aria-label="Cambiar densidad de la vista">
       {density === "compact" ? <Maximize2 size={18} /> : <Minimize2 size={18} />}
-    </button>
+    </Button>
   );
 }

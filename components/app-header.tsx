@@ -2,6 +2,7 @@
 
 import { Bell } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
+import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { DensityToggle } from "@/components/ui/density";
 
@@ -13,14 +14,10 @@ export function AppHeader() {
         <Logo />
         <div className="flex items-center gap-2">
           <DensityToggle />
-          <button
-            type="button"
-            aria-label="Notificaciones"
-            className="relative grid h-9 w-9 place-items-center rounded-full glass text-fg transition hover:scale-105 active:scale-95"
-          >
+          <Button variant="secondary" size="icon" aria-label="Notificaciones" className="relative">
             <Bell size={18} />
             <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-accent" />
-          </button>
+          </Button>
           <ThemeToggle />
         </div>
       </div>
