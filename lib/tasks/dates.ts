@@ -13,6 +13,13 @@ export function monthStart(isoDate: string): string {
   return `${isoDate.slice(0, 7)}-01`;
 }
 
+/** Suma `n` meses a una fecha ISO. Úsese sobre el día 1 (monthStart) para evitar overflow de día. */
+export function addMonths(isoDate: string, n: number): string {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  d.setUTCMonth(d.getUTCMonth() + n);
+  return d.toISOString().slice(0, 10);
+}
+
 /** ¿Es una fecha ISO válida (YYYY-MM-DD) y real (round-trip)? */
 export function isValidIsoDate(s: string | null | undefined): s is string {
   if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;

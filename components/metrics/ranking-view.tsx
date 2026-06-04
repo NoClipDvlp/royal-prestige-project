@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { GlassCard } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
 import { cn } from "@/lib/cn";
@@ -43,28 +45,47 @@ export function RankingView({ data }: { data: RankingByRange }) {
         <GlassCard className="p-6 text-center text-sm text-muted">Sin datos para este rango.</GlassCard>
       ) : (
         <GlassCard className="divide-y divide-white/40 p-2 dark:divide-white/10">
-          {rows.map((r, i) => (
-            <div key={`${r.grain}-${r.id}`} className="flex items-center gap-3 px-3 py-3">
-              <span className="w-5 shrink-0 text-center text-xs font-semibold text-muted">{i + 1}</span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-fg">{r.name}</p>
-                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/40 dark:bg-white/10">
-                  <div className="h-full rounded-full bg-accent" style={{ width: `${r.pct ?? 0}%` }} />
+          {rows.map((r, i) => {
+            const body = (
+              <>
+                <span className="w-5 shrink-0 text-center text-xs font-semibold text-muted">{i + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-fg">{r.name}</p>
+                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/40 dark:bg-white/10">
+                    <div className="h-full rounded-full bg-accent" style={{ width: `${r.pct ?? 0}%` }} />
+                  </div>
+                  <p className="mt-1 text-[10px] text-muted">
+                    {r.done}✓ · {r.half}◑ · {r.undone}○
+                  </p>
                 </div>
-                <p className="mt-1 text-[10px] text-muted">
-                  {r.done}✓ · {r.half}◑ · {r.undone}○
-                </p>
-              </div>
-              <span
-                className={cn(
-                  "w-16 shrink-0 text-right text-sm font-semibold tabular-nums",
-                  r.pct === null ? "text-muted" : "text-fg",
-                )}
+                <span
+                  className={cn(
+                    "shrink-0 text-right text-sm font-semibold tabular-nums",
+                    grain === "user" ? "w-14" : "w-16",
+                    r.pct === null ? "text-muted" : "text-fg",
+                  )}
+                >
+                  {r.pct === null ? "Sin datos" : `${r.pct}%`}
+                </span>
+                {grain === "user" && <ChevronRight size={16} className="shrink-0 text-muted" aria-hidden />}
+              </>
+            );
+            // Solo el grano 'user' (distribuidor) abre perfil; 'distribution' no es un perfil de persona.
+            return grain === "user" ? (
+              <Link
+                key={`${r.grain}-${r.id}`}
+                href={`/metricas/${r.id}`}
+                aria-label={`Ver perfil de ${r.name}`}
+                className="flex items-center gap-3 rounded-xl px-3 py-3 transition hover:bg-white/40 dark:hover:bg-white/5"
               >
-                {r.pct === null ? "Sin datos" : `${r.pct}%`}
-              </span>
-            </div>
-          ))}
+                {body}
+              </Link>
+            ) : (
+              <div key={`${r.grain}-${r.id}`} className="flex items-center gap-3 px-3 py-3">
+                {body}
+              </div>
+            );
+          })}
         </GlassCard>
       )}
     </div>

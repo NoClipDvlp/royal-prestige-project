@@ -38,3 +38,19 @@ export type RankRow = ComplianceStat & {
 };
 
 export type RankingByRange = Record<ComplianceRange, RankRow[]>;
+
+// ── BI: tendencia (series) + desglose (breakdown) ──────────────────────────────
+
+/** Punto de la serie temporal (denso: una entrada por bucket esperado; pct null = bucket sin datos). */
+export type SeriesPoint = ComplianceStat & { bucketStart: string };
+export type SeriesByBucket = Record<ComplianceRange, SeriesPoint[]>;
+
+export type BreakdownDimension = "category" | "priority";
+
+export const DIMENSION_LABEL: Record<BreakdownDimension, string> = {
+  category: "Categoría",
+  priority: "Prioridad",
+};
+
+export type BreakdownRow = ComplianceStat & { key: string; label: string };
+export type BreakdownByDim = Record<BreakdownDimension, BreakdownRow[]>;
