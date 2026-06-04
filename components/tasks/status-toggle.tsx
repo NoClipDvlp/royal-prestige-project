@@ -49,7 +49,7 @@ export function StatusToggle({
           className={cn(
             "rounded-full font-medium transition",
             compact ? "h-6 min-w-0 flex-1 px-1.5 text-[10px]" : "h-7 px-2.5 text-[11px]",
-            optimistic === p ? "bg-accent text-accent-fg" : "glass text-muted hover:text-fg",
+            optimistic === p ? "bg-accent text-accent-fg elev-1" : "glass text-muted hover:text-fg",
           )}
         >
           {p}%

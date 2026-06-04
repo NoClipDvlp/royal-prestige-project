@@ -6,7 +6,7 @@ import { useDensity } from "@/components/ui/density";
 import { GlassCard } from "@/components/ui/card";
 import { StatusToggle } from "@/components/tasks/status-toggle";
 import { cn } from "@/lib/cn";
-import { densityClasses } from "@/lib/density";
+import { densityClasses, ROW_HOVER } from "@/lib/density";
 import type { DayItem, TaskPriority } from "@/lib/tasks/types";
 
 const PRIORITY_DOT: Record<TaskPriority, string> = {
@@ -61,7 +61,7 @@ export function TodayTasks({
       ) : (
         <GlassCard className={cn("divide-y divide-white/40 dark:divide-white/10", d.listPad)}>
           {sorted.map((it) => (
-            <div key={it.taskId} className={cn("flex items-center", d.rowGap, d.rowPad)}>
+            <div key={it.taskId} className={cn("flex items-center rounded-xl", d.rowGap, d.rowPad, ROW_HOVER)}>
               <span className={cn("shrink-0 text-xs text-muted", compact ? "w-10" : "w-12")}>
                 {it.timeSlot ?? "—"}
               </span>

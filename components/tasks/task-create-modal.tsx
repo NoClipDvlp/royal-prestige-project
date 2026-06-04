@@ -5,6 +5,7 @@ import { X, Plus } from "lucide-react";
 import { GlassCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { createTask } from "@/lib/actions/tasks";
 import { WORKDAY_END, WORKDAY_START } from "@/lib/constants";
 import {
@@ -16,9 +17,6 @@ import {
 } from "@/lib/tasks/types";
 
 export type TaskCategory = { id: string; name: string };
-
-const selectCls =
-  "w-full rounded-2xl border border-white/70 bg-white/50 px-3 py-2.5 text-sm text-fg outline-none transition focus:ring-2 focus:ring-accent/40 dark:border-white/10 dark:bg-white/5";
 
 const WORKDAY_END_MIN = WORKDAY_END * 60; // tope de la franja (22:00 = 1320), espejo del CHECK de 0004
 
@@ -118,18 +116,18 @@ export function TaskCreateModal({
           <div className="grid grid-cols-2 gap-3">
             <label className="space-y-1">
               <span className="px-1 text-[11px] text-muted">Hora</span>
-              <select className={selectCls} value={hour} onChange={(e) => setHour(Number(e.target.value))} aria-label="Hora">
+              <Select className="w-full" value={hour} onChange={(e) => setHour(Number(e.target.value))} aria-label="Hora">
                 {hours.map((h) => (
                   <option key={h} value={h}>
                     {String(h).padStart(2, "0")}:00
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="space-y-1">
               <span className="px-1 text-[11px] text-muted">Duración</span>
-              <select
-                className={selectCls}
+              <Select
+                className="w-full"
                 value={duration === null ? "" : String(duration)}
                 onChange={(e) => setDuration(e.target.value === "" ? null : Number(e.target.value))}
                 aria-label="Duración"
@@ -139,15 +137,15 @@ export function TaskCreateModal({
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <label className="space-y-1">
               <span className="px-1 text-[11px] text-muted">Recurrencia</span>
-              <select
-                className={selectCls}
+              <Select
+                className="w-full"
                 value={recurrence}
                 onChange={(e) => setRecurrence(e.target.value as TaskRecurrence)}
                 aria-label="Recurrencia"
@@ -157,12 +155,12 @@ export function TaskCreateModal({
                     {RECURRENCE_LABEL[r]}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="space-y-1">
               <span className="px-1 text-[11px] text-muted">Prioridad</span>
-              <select
-                className={selectCls}
+              <Select
+                className="w-full"
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as TaskPriority)}
                 aria-label="Prioridad"
@@ -172,20 +170,20 @@ export function TaskCreateModal({
                     {PRIORITY_LABEL[p]}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           </div>
 
           <label className="space-y-1">
             <span className="px-1 text-[11px] text-muted">Categoría</span>
-            <select className={selectCls} value={categoryId} onChange={(e) => setCategoryId(e.target.value)} aria-label="Categoría">
+            <Select className="w-full" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} aria-label="Categoría">
               <option value="">Sin categoría</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
 
           {error ? <p className="text-xs text-red-500">{error}</p> : null}

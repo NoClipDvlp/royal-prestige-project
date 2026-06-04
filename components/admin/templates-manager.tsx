@@ -6,6 +6,7 @@ import { useDensity } from "@/components/ui/density";
 import { GlassCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/cn";
 import { densityClasses } from "@/lib/density";
 import { WORKDAY_END, WORKDAY_START } from "@/lib/constants";
@@ -46,8 +47,6 @@ export type AdminTemplate = {
   items: AdminTemplateItem[];
 };
 
-const selectCls =
-  "rounded-2xl border border-white/70 bg-white/50 px-3 py-2.5 text-sm text-fg outline-none dark:border-white/10 dark:bg-white/5";
 const HOURS = Array.from({ length: WORKDAY_END - WORKDAY_START + 1 }, (_, i) => WORKDAY_START + i);
 const WORKDAY_END_MIN = WORKDAY_END * 60;
 
@@ -250,7 +249,7 @@ function ItemRow({ item, catName, categories }: { item: AdminTemplateItem; catNa
       ? `${item.timeSlot}${item.durationMinutes ? ` · ${item.durationMinutes}m` : ""}`
       : "sin hora";
   return (
-    <div className={cn("flex items-center gap-2 rounded-xl bg-white/40 dark:bg-white/5", d.rowPad)}>
+    <div className={cn("flex items-center gap-2 rounded-xl bg-white/40 transition-colors hover:bg-white/60 dark:bg-white/5 dark:hover:bg-white/10", d.rowPad)}>
       <span className="min-w-0 flex-1 truncate text-sm text-fg">{item.title}</span>
       {d.showSecondary && (
         <span className="hidden shrink-0 text-[11px] text-muted sm:inline">
@@ -339,33 +338,33 @@ function ItemForm({
       <div className="mt-2 flex flex-col gap-2">
         <Input placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} />
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          <select className={selectCls} value={hour ?? ""} onChange={(e) => setHour(e.target.value === "" ? null : Number(e.target.value))} aria-label="Hora">
+          <Select value={hour ?? ""} onChange={(e) => setHour(e.target.value === "" ? null : Number(e.target.value))} aria-label="Hora">
             <option value="">Sin hora</option>
             {HOURS.map((h) => (
               <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>
             ))}
-          </select>
-          <select className={selectCls} value={duration === null ? "" : String(duration)} onChange={(e) => setDuration(e.target.value === "" ? null : Number(e.target.value))} aria-label="Duración">
+          </Select>
+          <Select value={duration === null ? "" : String(duration)} onChange={(e) => setDuration(e.target.value === "" ? null : Number(e.target.value))} aria-label="Duración">
             {DURATION_OPTIONS.map((o) => (
               <option key={o.label} value={o.value === null ? "" : String(o.value)}>{o.label}</option>
             ))}
-          </select>
-          <select className={selectCls} value={recurrence} onChange={(e) => setRecurrence(e.target.value as TaskRecurrence)} aria-label="Recurrencia">
+          </Select>
+          <Select value={recurrence} onChange={(e) => setRecurrence(e.target.value as TaskRecurrence)} aria-label="Recurrencia">
             {(Object.keys(RECURRENCE_LABEL) as TaskRecurrence[]).map((r) => (
               <option key={r} value={r}>{RECURRENCE_LABEL[r]}</option>
             ))}
-          </select>
-          <select className={selectCls} value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} aria-label="Prioridad">
+          </Select>
+          <Select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} aria-label="Prioridad">
             {(Object.keys(PRIORITY_LABEL) as TaskPriority[]).map((p) => (
               <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>
             ))}
-          </select>
-          <select className={`${selectCls} col-span-2 sm:col-span-1`} value={categoryId} onChange={(e) => setCategoryId(e.target.value)} aria-label="Categoría">
+          </Select>
+          <Select className="col-span-2 sm:col-span-1" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} aria-label="Categoría">
             <option value="">Sin categoría</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
-          </select>
+          </Select>
         </div>
         {err ? <p className="text-xs text-red-500">{err}</p> : null}
         <div className="flex justify-end gap-2">

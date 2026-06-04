@@ -8,7 +8,7 @@ import { StatusToggle } from "@/components/tasks/status-toggle";
 import { RecurrenceEditDialog } from "@/components/tasks/recurrence-edit-dialog";
 import { WORKDAY_END, WORKDAY_START } from "@/lib/constants";
 import { cn } from "@/lib/cn";
-import { densityClasses } from "@/lib/density";
+import { densityClasses, ROW_HOVER } from "@/lib/density";
 import type { DayItem, TaskPriority } from "@/lib/tasks/types";
 
 const POINT_MIN = 30; // minutos que ocupa un "punto" (sin duración) SOLO para el cálculo de solape
@@ -266,7 +266,7 @@ export function DayView({
           <p className="mb-2 px-1 text-[11px] uppercase tracking-wide text-muted">Sin hora</p>
           <div className={cn("flex flex-col", d.compact ? "gap-1" : "gap-1.5")}>
             {noTime.map((it) => (
-              <div key={it.taskId} className={cn("flex items-center px-1", d.rowGap)}>
+              <div key={it.taskId} className={cn("flex items-center rounded-lg px-2 py-1", d.rowGap, ROW_HOVER)}>
                 {d.showSecondary && (
                   <span className={cn("h-2 w-2 shrink-0 rounded-full", PRIORITY_DOT[it.priority])} aria-hidden />
                 )}

@@ -30,14 +30,15 @@ export function DayNav({ date, today }: { date: string; today: string }) {
 
   return (
     <GlassCard className="flex items-center justify-between gap-2 px-3 py-2.5">
-      <button
-        type="button"
+      <Button
+        variant="secondary"
+        size="icon"
         onClick={() => go(addDays(date, -1))}
         aria-label="Día anterior"
-        className="glass rounded-full p-2 text-muted transition hover:text-fg active:scale-95"
+        className="text-muted hover:text-fg"
       >
         <ChevronLeft size={18} />
-      </button>
+      </Button>
 
       <div className="flex min-w-0 flex-col items-center text-center">
         <span className="truncate text-sm font-semibold text-fg">{label}</span>
@@ -53,14 +54,15 @@ export function DayNav({ date, today }: { date: string; today: string }) {
         >
           Hoy
         </Button>
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="icon"
           onClick={() => go(addDays(date, 1))}
           aria-label="Día siguiente"
-          className="glass rounded-full p-2 text-muted transition hover:text-fg active:scale-95"
+          className="text-muted hover:text-fg"
         >
           <ChevronRight size={18} />
-        </button>
+        </Button>
       </div>
     </GlassCard>
   );
