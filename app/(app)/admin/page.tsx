@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import { getUser, requireRole } from "@/lib/auth/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageTitle } from "@/components/page-title";
+import { AdminContentSkeleton } from "@/components/skeletons";
 import { AdminTabs } from "@/components/admin/admin-tabs";
 import { CreateUser } from "@/components/admin/create-user";
 import { UsersManager, type AdminUser, type Dist } from "@/components/admin/users-manager";
@@ -17,8 +19,20 @@ import type { TaskPriority, TaskRecurrence } from "@/lib/tasks/types";
 
 // Panel admin (ADR-0009 + ADR-0015 Fase 2b). requireRole('admin') + datos vía sesión admin (RLS admin).
 // Reorganizado en tabs (Usuarios / Organización / Plantillas) — agrupa los managers existentes sin reescribirlos.
+// El guard de rol corre primero (rápido, memoizado); el título sale ya y el fetch pesado (5 queries) streamea.
 export default async function AdminPage() {
   await requireRole("admin");
+  return (
+    <div className="flex flex-col gap-5">
+      <PageTitle title="Administración" subtitle="Usuarios, organización y plantillas." />
+      <Suspense fallback={<AdminContentSkeleton />}>
+        <AdminData />
+      </Suspense>
+    </div>
+  );
+}
+
+async function AdminData() {
   const me = await getUser();
   const supabase = await createSupabaseServerClient();
 
@@ -86,10 +100,8 @@ export default async function AdminPage() {
   const asgTemplates = templates.map((t) => ({ id: t.id, name: t.name }));
 
   return (
-    <div className="flex flex-col gap-5">
-      <PageTitle title="Administración" subtitle="Usuarios, organización y plantillas." />
-      <AdminTabs
-        tabs={[
+    <AdminTabs
+      tabs={[
           {
             id: "usuarios",
             label: "Usuarios",
@@ -120,8 +132,7 @@ export default async function AdminPage() {
               </>
             ),
           },
-        ]}
-      />
-    </div>
+      ]}
+    />
   );
 }

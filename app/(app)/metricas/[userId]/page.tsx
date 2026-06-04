@@ -5,6 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth/server";
 import { GlassCard } from "@/components/ui/card";
+import { ProfileSkeleton } from "@/components/skeletons";
 import { TrendChart } from "@/components/metrics/trend-chart";
 import { BreakdownList } from "@/components/metrics/breakdown-list";
 import { breakdownByDims, fetchLabel, seriesByBuckets } from "@/lib/metrics/server";
@@ -53,15 +54,5 @@ async function ProfileData({ userId }: { userId: string }) {
       <TrendChart series={series} />
       <BreakdownList data={breakdown} />
     </>
-  );
-}
-
-function ProfileSkeleton() {
-  return (
-    <div className="flex flex-col gap-4">
-      <GlassCard className="h-24 animate-pulse" />
-      <GlassCard className="h-64 animate-pulse" />
-      <GlassCard className="h-56 animate-pulse" />
-    </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { GlassCard } from "@/components/ui/card";
@@ -13,7 +14,15 @@ import { cn } from "@/lib/cn";
  */
 export function DayNav({ date, today }: { date: string; today: string }) {
   const router = useRouter();
-  const go = (iso: string) => router.push(iso === today ? "/tareas" : `/tareas?d=${iso}`);
+  const href = (iso: string) => (iso === today ? "/tareas" : `/tareas?d=${iso}`);
+  const go = (iso: string) => router.push(href(iso));
+
+  // Prefetch del RSC de día±1 → ‹ › saltan sin esperar al server (Pulido Tanda 2).
+  useEffect(() => {
+    router.prefetch(href(addDays(date, -1)));
+    router.prefetch(href(addDays(date, 1)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, today]);
 
   const label = formatDayLabel(date, today);
   const full = formatFullDay(date);
