@@ -45,7 +45,8 @@ ALTERs que dependen de objetos creados antes:
 | 7 | `db/migrations/0005_metrics.sql` | Motor de métricas: `priority_weight`, `compliance_self` (`SECURITY INVOKER`), `compliance_ranking` (`SECURITY DEFINER` + gate de rol). Aditiva (solo funciones + grants) → **después** de 0004 (ADR-0012). |
 | 8 | `db/migrations/0006_bi.sql` | Motor de BI: `compliance_series` + `compliance_breakdown` (`SECURITY DEFINER` + gate admin/auditor). Aditiva (solo funciones + grants) → **después** de 0005 (ADR-0013). |
 | 9 | `db/migrations/0008_templates.sql` | Plantillas: `task_templates` + `template_items` + `template_assignments` + ALTER `tasks` (template_id/template_item_id/customized_at) + RLS admin-only. Aditiva → **después** de 0006 (ADR-0015). _(0007 = hueco intencional; sparkline ADR-0014.)_ |
-| 10 | `db/seed/roles.sql` | Intencionalmente **sin INSERTs** (no hay categorías de fábrica ni admin hardcodeado). Puede omitirse; se incluye por completitud. |
+| 10 | `db/migrations/0010_customized_trigger.sql` | Trigger `mark_task_customized` (BEFORE UPDATE on tasks, gateado por rol distribuidor) → propagación no-destructiva de plantillas. Aditiva → **después** de 0008 (ADR-0016). |
+| 11 | `db/seed/roles.sql` | Intencionalmente **sin INSERTs** (no hay categorías de fábrica ni admin hardcodeado). Puede omitirse; se incluye por completitud. |
 
 **Vía A — SQL Editor (recomendado para la primera vez):** abre **SQL Editor**, y pega y ejecuta el
 contenido de cada archivo **uno por uno, en el orden de la tabla**. (El SQL Editor corre como `postgres`,
@@ -63,6 +64,7 @@ psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0004_tasks_premium.sql
 psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0005_metrics.sql
 psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0006_bi.sql
 psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0008_templates.sql
+psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0010_customized_trigger.sql
 ```
 
 **Vía C — consolidado idempotente (recomendada para re-aplicar / estado parcial):**
