@@ -69,8 +69,8 @@ export async function setStatus(taskId: string, date: string, pct: StatusPct): P
     .eq("task_id", taskId)
     .eq("date", date); // RLS: solo la propia instancia
   if (error) return { ok: false, error: error.message };
-  revalidatePath("/tareas");
-  revalidatePath("/"); // la lista de hoy del home refleja el nuevo estado
+  // Sin revalidatePath: el cliente reconcilia con router.refresh() de la ruta actual (optimista, Tanda 1).
+  // La otra ruta (home/tareas) refleja el cambio en su próxima navegación (pages dinámicas).
   return { ok: true };
 }
 
