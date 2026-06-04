@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth/server";
 import { GlassCard } from "@/components/ui/card";
 import { ProfileSkeleton } from "@/components/skeletons";
+import { RefreshButton } from "@/components/metrics/refresh-button";
 import { TrendChart } from "@/components/metrics/trend-chart";
 import { BreakdownList } from "@/components/metrics/breakdown-list";
 import { breakdownByDims, fetchLabel, seriesByBuckets } from "@/lib/metrics/server";
@@ -23,9 +24,12 @@ export default async function ProfilePage({ params }: { params: Promise<{ userId
 
   return (
     <div className="flex flex-col gap-4">
-      <Link href="/metricas" className="inline-flex w-fit items-center gap-1 text-sm text-muted transition hover:text-fg">
-        <ChevronLeft size={16} /> Ranking
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link href="/metricas" className="inline-flex w-fit items-center gap-1 text-sm text-muted transition hover:text-fg">
+          <ChevronLeft size={16} /> Ranking
+        </Link>
+        <RefreshButton />
+      </div>
       <Suspense fallback={<ProfileSkeleton />}>
         <ProfileData userId={userId} />
       </Suspense>
