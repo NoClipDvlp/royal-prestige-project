@@ -75,3 +75,16 @@ body {
   -webkit-backdrop-filter: blur(22px) saturate(160%);
   backdrop-filter: blur(22px) saturate(160%);
 }
+
+/* Todo lo interactivo se siente clickable (Tailwind v4 no pone cursor:pointer a button en su preflight). */
+button:not(:disabled),
+[role="button"],
+[role="tab"],
+[role="checkbox"],
+summary,
+label[for] {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
