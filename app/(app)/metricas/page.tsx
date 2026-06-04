@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getProfile, type AppRole } from "@/lib/auth/server";
 import { PageTitle } from "@/components/page-title";
 import { MetricsSkeleton } from "@/components/skeletons";
+import { RefreshButton } from "@/components/metrics/refresh-button";
 import { ComplianceCard } from "@/components/metrics/compliance-card";
 import { RankingView } from "@/components/metrics/ranking-view";
 import { complianceByRanges, rankingByRanges, sparklinesByUser } from "@/lib/metrics/server";
@@ -17,14 +18,17 @@ export default async function MetricasPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageTitle
-        title="Métricas"
-        subtitle={
-          isRanking
-            ? "Comparativa entre distribuidores — cumplimiento ponderado por prioridad."
-            : "Tu cumplimiento ponderado por prioridad (día / semana / mes)."
-        }
-      />
+      <div className="flex items-start justify-between gap-3">
+        <PageTitle
+          title="Métricas"
+          subtitle={
+            isRanking
+              ? "Comparativa entre distribuidores — cumplimiento ponderado por prioridad."
+              : "Tu cumplimiento ponderado por prioridad (día / semana / mes)."
+          }
+        />
+        <RefreshButton />
+      </div>
       <Suspense fallback={<MetricsSkeleton ranking={isRanking} />}>
         <MetricsData role={role} />
       </Suspense>

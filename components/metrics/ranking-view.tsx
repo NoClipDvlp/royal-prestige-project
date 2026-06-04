@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, Minus } from "lucide-react";
 import { useDensity } from "@/components/ui/density";
 import { GlassCard } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
@@ -25,6 +25,46 @@ const GRAIN_OPTS = (["user", "distribution"] as RankGrain[]).map((g) => ({ value
 /** pct null ("Sin datos") al final; el resto por compliance_pct desc. */
 function sortRows(rows: RankRow[]): RankRow[] {
   return [...rows].sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1));
+}
+
+/**
+ * DELTA accionable: cambio del último bucket CON datos vs el anterior con datos (semanal,
+ * compliance_series_by_user). Señal principal del ranking — flecha + magnitud (pts) + color
+ * (verde sube / rojo baja / neutro plano). "—" si no hay período anterior. Cero datos nuevos:
+ * sale del mismo prop `sparklines` que ya alimenta la sparkline.
+ */
+function Delta({ points }: { points?: SeriesPoint[] }) {
+  const withData = (points ?? []).filter((p) => p.pct !== null);
+  const cls = "inline-flex w-11 shrink-0 items-center justify-end gap-0.5 text-[11px] font-medium tabular-nums";
+
+  if (withData.length < 2) {
+    return (
+      <span className={cn(cls, "text-muted/50")} aria-label="Sin período anterior">
+        —
+      </span>
+    );
+  }
+  const last = withData[withData.length - 1].pct as number;
+  const prev = withData[withData.length - 2].pct as number;
+  const d = last - prev;
+
+  if (d === 0) {
+    return (
+      <span className={cn(cls, "text-muted")} aria-label="Sin cambios vs el período anterior">
+        <Minus size={12} aria-hidden />0
+      </span>
+    );
+  }
+  const up = d > 0;
+  return (
+    <span
+      className={cn(cls, up ? "text-positive" : "text-red-500 dark:text-red-400")}
+      aria-label={`${up ? "Subió" : "Bajó"} ${Math.abs(d)} puntos vs el período anterior`}
+    >
+      {up ? <ArrowUp size={12} aria-hidden /> : <ArrowDown size={12} aria-hidden />}
+      {Math.abs(d)}
+    </span>
+  );
 }
 
 /**
@@ -77,6 +117,7 @@ export function RankingView({
                     <Sparkline points={sparklines?.[r.id] ?? []} />
                   </span>
                 )}
+                {grain === "user" && <Delta points={sparklines?.[r.id]} />}
                 <span
                   className={cn(
                     "shrink-0 text-right text-sm font-semibold tabular-nums",
