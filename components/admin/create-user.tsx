@@ -51,7 +51,6 @@ export function CreateUser() {
           onChange={(e) => setEmail(e.target.value)}
           required
           autoComplete="off"
-          className="flex-1"
         />
         <Input
           placeholder="Contraseña temporal"
