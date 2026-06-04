@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getProfile, type AppRole } from "@/lib/auth/server";
 import { PageTitle } from "@/components/page-title";
-import { GlassCard } from "@/components/ui/card";
+import { MetricsSkeleton } from "@/components/skeletons";
 import { ComplianceCard } from "@/components/metrics/compliance-card";
 import { RankingView } from "@/components/metrics/ranking-view";
 import { complianceByRanges, rankingByRanges, sparklinesByUser } from "@/lib/metrics/server";
@@ -46,13 +46,4 @@ async function MetricsData({ role }: { role: AppRole }) {
   // distribuidor (y jd/seller futuros): sus propias métricas (compliance_self) — NO el ranking (gate → 0 filas).
   const compliance = await complianceByRanges(supabase, today);
   return <ComplianceCard data={compliance} defaultRange="week" />;
-}
-
-function MetricsSkeleton({ ranking }: { ranking: boolean }) {
-  return (
-    <div className="flex flex-col gap-4">
-      <GlassCard className="h-10 animate-pulse" />
-      <GlassCard className={ranking ? "h-80 animate-pulse" : "h-52 animate-pulse"} />
-    </div>
-  );
 }

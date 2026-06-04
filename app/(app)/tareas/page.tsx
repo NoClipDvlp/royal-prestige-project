@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageTitle } from "@/components/page-title";
-import { GlassCard } from "@/components/ui/card";
+import { BoardSkeleton } from "@/components/skeletons";
 import { DayNav } from "@/components/tasks/day-nav";
 import { TareasBoard } from "@/components/tasks/tareas-board";
 import type { TaskCategory } from "@/components/tasks/task-create-modal";
@@ -92,15 +92,6 @@ async function TareasData({ date, editable }: { date: string; editable: boolean 
     loadCategories(supabase),
   ]);
   return <TareasBoard items={items} date={date} editable={editable} categories={categories} />;
-}
-
-function BoardSkeleton() {
-  return (
-    <>
-      <GlassCard className="h-12 animate-pulse" />
-      <GlassCard className="h-[28rem] animate-pulse" />
-    </>
-  );
 }
 
 export default async function TareasPage({

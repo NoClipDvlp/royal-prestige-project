@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getProfile, getUser } from "@/lib/auth/server";
 import { DistributorDashboard } from "@/components/dashboard/distributor-dashboard";
-import { GlassCard } from "@/components/ui/card";
+import { DashboardSkeleton } from "@/components/skeletons";
 import type { TaskCategory } from "@/components/tasks/task-create-modal";
 import { bogotaToday } from "@/lib/dashboard/week";
 import { complianceByRanges } from "@/lib/metrics/server";
@@ -85,15 +85,5 @@ async function DistributorData() {
       date={today}
       categories={categories}
     />
-  );
-}
-
-function DashboardSkeleton() {
-  return (
-    <div className="flex flex-col gap-5">
-      <GlassCard className="h-36 animate-pulse" />
-      <GlassCard className="h-44 animate-pulse" />
-      <GlassCard className="h-48 animate-pulse" />
-    </div>
   );
 }
