@@ -3,10 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { useDensity } from "@/components/ui/density";
 import { GlassCard } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
 import { Sparkline } from "@/components/metrics/sparkline";
 import { cn } from "@/lib/cn";
+import { densityClasses } from "@/lib/density";
 import {
   GRAIN_LABEL,
   RANGE_LABEL,
@@ -37,6 +39,8 @@ export function RankingView({
   data: RankingByRange;
   sparklines?: Record<string, SeriesPoint[]>;
 }) {
+  const { density } = useDensity();
+  const d = densityClasses(density);
   const [range, setRange] = useState<ComplianceRange>("week");
   const [grain, setGrain] = useState<RankGrain>("user");
 
@@ -52,7 +56,7 @@ export function RankingView({
       {rows.length === 0 ? (
         <GlassCard className="p-6 text-center text-sm text-muted">Sin datos para este rango.</GlassCard>
       ) : (
-        <GlassCard className="divide-y divide-white/40 p-2 dark:divide-white/10">
+        <GlassCard className={cn("divide-y divide-white/40 dark:divide-white/10", d.listPad)}>
           {rows.map((r, i) => {
             const body = (
               <>
@@ -62,9 +66,11 @@ export function RankingView({
                   <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/40 dark:bg-white/10">
                     <div className="h-full rounded-full bg-accent" style={{ width: `${r.pct ?? 0}%` }} />
                   </div>
-                  <p className="mt-1 text-[10px] text-muted">
-                    {r.done}✓ · {r.half}◑ · {r.undone}○
-                  </p>
+                  {d.showSecondary && (
+                    <p className="mt-1 text-[10px] text-muted">
+                      {r.done}✓ · {r.half}◑ · {r.undone}○
+                    </p>
+                  )}
                 </div>
                 {grain === "user" && (
                   <span className="hidden shrink-0 sm:block">
@@ -89,12 +95,12 @@ export function RankingView({
                 key={`${r.grain}-${r.id}`}
                 href={`/metricas/${r.id}`}
                 aria-label={`Ver perfil de ${r.name}`}
-                className="flex items-center gap-3 rounded-xl px-3 py-3 transition hover:bg-white/40 dark:hover:bg-white/5"
+                className={cn("flex items-center rounded-xl transition hover:bg-white/40 dark:hover:bg-white/5", d.rowGap, d.rowPad)}
               >
                 {body}
               </Link>
             ) : (
-              <div key={`${r.grain}-${r.id}`} className="flex items-center gap-3 px-3 py-3">
+              <div key={`${r.grain}-${r.id}`} className={cn("flex items-center", d.rowGap, d.rowPad)}>
                 {body}
               </div>
             );

@@ -2,14 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
+import { useDensity } from "@/components/ui/density";
 import { GlassCard } from "@/components/ui/card";
 import { StatusToggle } from "@/components/tasks/status-toggle";
 import { RecurrenceEditDialog } from "@/components/tasks/recurrence-edit-dialog";
 import { WORKDAY_END, WORKDAY_START } from "@/lib/constants";
 import { cn } from "@/lib/cn";
+import { densityClasses } from "@/lib/density";
 import type { DayItem, TaskPriority } from "@/lib/tasks/types";
 
-const ROW_H = 72; // px por hora (aire entre horas — sensación premium, sin amontonar)
 const POINT_MIN = 30; // minutos que ocupa un "punto" (sin duración) SOLO para el cálculo de solape
 const PAD = 16; // aire arriba (antes de 08:00) y abajo (después de 22:00) dentro de la tarjeta
 const GUTTER = "3.25rem"; // ancho del carril de etiquetas de hora
@@ -108,6 +109,10 @@ export function DayView({
   const [dragEnd, setDragEnd] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const { density } = useDensity();
+  const d = densityClasses(density);
+  const ROW_H = d.timelineRowH; // alto por hora: compacta 56 (más horas a la vista) / ampliada 72 (aire)
+
   const hours = Array.from({ length: WORKDAY_END - WORKDAY_START + 1 }, (_, i) => WORKDAY_START + i);
   const gridSpan = (WORKDAY_END - WORKDAY_START) * ROW_H;
   const containerH = gridSpan + PAD * 2; // PAD de aire arriba y abajo (los "límites")
@@ -201,8 +206,10 @@ export function DayView({
                 const avail = containerH - top - 2; // no desbordar la tarjeta por abajo
                 const height = Math.max(24, Math.min(naturalH, avail));
                 // Contenido proporcional al alto disponible (evita recortes en bloques cortos).
-                const showTime = height >= 50;
-                const showToggle = editable && height >= 66;
+                // Compacta: oculta la hora-rango inline (el carril + la posición ya la comunican); el alto
+                // del bloque ∝ duración se conserva. Umbral del toggle proporcional → no se pierde en 1h.
+                const showTime = !d.compact && height >= ROW_H * 0.7;
+                const showToggle = editable && height >= ROW_H * 0.9;
                 const widthPct = 100 / b.lanes;
                 const it = b.item;
                 return (
@@ -257,10 +264,12 @@ export function DayView({
       {noTime.length > 0 && (
         <GlassCard className="p-3">
           <p className="mb-2 px-1 text-[11px] uppercase tracking-wide text-muted">Sin hora</p>
-          <div className="flex flex-col gap-1.5">
+          <div className={cn("flex flex-col", d.compact ? "gap-1" : "gap-1.5")}>
             {noTime.map((it) => (
-              <div key={it.taskId} className="flex items-center gap-2 px-1">
-                <span className={cn("h-2 w-2 shrink-0 rounded-full", PRIORITY_DOT[it.priority])} aria-hidden />
+              <div key={it.taskId} className={cn("flex items-center px-1", d.rowGap)}>
+                {d.showSecondary && (
+                  <span className={cn("h-2 w-2 shrink-0 rounded-full", PRIORITY_DOT[it.priority])} aria-hidden />
+                )}
                 <span className="flex-1 truncate text-sm text-fg">{it.title}</span>
                 {editable && <StatusToggle taskId={it.taskId} date={it.date} status={it.status} />}
                 {editable && (

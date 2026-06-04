@@ -1,12 +1,16 @@
 "use client";
 
 import { useState, useTransition, type FormEvent } from "react";
+import { useDensity } from "@/components/ui/density";
 import { GlassCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { densityClasses } from "@/lib/density";
 import { createDistribution } from "@/lib/actions/admin";
 
 export function DistributionsManager({ distributions }: { distributions: { id: string; name: string }[] }) {
+  const { density } = useDensity();
+  const d = densityClasses(density);
   const [name, setName] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -23,7 +27,7 @@ export function DistributionsManager({ distributions }: { distributions: { id: s
   }
 
   return (
-    <GlassCard className="p-6">
+    <GlassCard className={d.cardPad}>
       <h2 className="mb-3 text-sm font-semibold text-fg">Distribuciones</h2>
       <ul className="mb-3 space-y-1 text-sm text-fg">
         {distributions.length ? (

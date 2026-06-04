@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useDensity } from "@/components/ui/density";
 import { GlassCard } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
 import { cn } from "@/lib/cn";
+import { densityClasses } from "@/lib/density";
 import { PRIORITY_LABEL, type TaskPriority } from "@/lib/tasks/types";
 import {
   DIMENSION_LABEL,
@@ -24,11 +26,13 @@ function sortRows(rows: BreakdownRow[]): BreakdownRow[] {
  * La prioridad se localiza en cliente; la categoría usa el nombre que da la RPC.
  */
 export function BreakdownList({ data }: { data: BreakdownByDim }) {
+  const { density } = useDensity();
+  const d = densityClasses(density);
   const [dim, setDim] = useState<BreakdownDimension>("category");
   const rows = sortRows(data[dim]);
 
   return (
-    <GlassCard className="p-6">
+    <GlassCard className={d.cardPad}>
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
           <p className="text-xs uppercase tracking-wide text-muted">Desglose</p>
@@ -40,7 +44,7 @@ export function BreakdownList({ data }: { data: BreakdownByDim }) {
       {rows.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted">Sin datos en el rango.</p>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className={cn("flex flex-col", d.rowGap)}>
           {rows.map((r) => {
             const label = dim === "priority" ? PRIORITY_LABEL[r.key as TaskPriority] ?? r.label : r.label;
             return (
@@ -55,9 +59,11 @@ export function BreakdownList({ data }: { data: BreakdownByDim }) {
                   <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/40 dark:bg-white/10">
                     <div className="h-full rounded-full bg-accent" style={{ width: `${r.pct ?? 0}%` }} />
                   </div>
-                  <p className="mt-1 text-[10px] text-muted">
-                    {r.done}✓ · {r.half}◑ · {r.undone}○
-                  </p>
+                  {d.showSecondary && (
+                    <p className="mt-1 text-[10px] text-muted">
+                      {r.done}✓ · {r.half}◑ · {r.undone}○
+                    </p>
+                  )}
                 </div>
               </div>
             );

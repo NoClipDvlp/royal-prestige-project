@@ -2,9 +2,12 @@
 
 import { useState, useTransition, type FormEvent } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { useDensity } from "@/components/ui/density";
 import { GlassCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/cn";
+import { densityClasses } from "@/lib/density";
 import { WORKDAY_END, WORKDAY_START } from "@/lib/constants";
 import {
   DURATION_OPTIONS,
@@ -53,6 +56,8 @@ function hourOf(timeSlot: string | null): number | null {
 }
 
 export function TemplatesManager({ templates, categories }: { templates: AdminTemplate[]; categories: CatOption[] }) {
+  const { density } = useDensity();
+  const d = densityClasses(density);
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -73,7 +78,7 @@ export function TemplatesManager({ templates, categories }: { templates: AdminTe
   }
 
   return (
-    <GlassCard className="p-6">
+    <GlassCard className={d.cardPad}>
       <h2 className="mb-3 text-sm font-semibold text-fg">Plantillas de tareas</h2>
 
       <form onSubmit={create} className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -232,6 +237,8 @@ function TemplateCard({ template, categories }: { template: AdminTemplate; categ
 }
 
 function ItemRow({ item, catName, categories }: { item: AdminTemplateItem; catName: string | null; categories: CatOption[] }) {
+  const { density } = useDensity();
+  const d = densityClasses(density);
   const [editing, setEditing] = useState(false);
   const [pending, start] = useTransition();
 
@@ -243,12 +250,14 @@ function ItemRow({ item, catName, categories }: { item: AdminTemplateItem; catNa
       ? `${item.timeSlot}${item.durationMinutes ? ` · ${item.durationMinutes}m` : ""}`
       : "sin hora";
   return (
-    <div className="flex items-center gap-2 rounded-xl bg-white/40 px-3 py-2 dark:bg-white/5">
+    <div className={cn("flex items-center gap-2 rounded-xl bg-white/40 dark:bg-white/5", d.rowPad)}>
       <span className="min-w-0 flex-1 truncate text-sm text-fg">{item.title}</span>
-      <span className="hidden shrink-0 text-[11px] text-muted sm:inline">
-        {range} · {RECURRENCE_LABEL[item.recurrence]} · {PRIORITY_LABEL[item.priority]}
-        {catName ? ` · ${catName}` : ""}
-      </span>
+      {d.showSecondary && (
+        <span className="hidden shrink-0 text-[11px] text-muted sm:inline">
+          {range} · {RECURRENCE_LABEL[item.recurrence]} · {PRIORITY_LABEL[item.priority]}
+          {catName ? ` · ${catName}` : ""}
+        </span>
+      )}
       <button type="button" onClick={() => setEditing(true)} aria-label="Editar tarea" className="shrink-0 text-muted transition hover:text-fg">
         <Pencil size={14} />
       </button>
