@@ -2,9 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { Trash2 } from "lucide-react";
+import { useDensity } from "@/components/ui/density";
 import { GlassCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/cn";
+import { densityClasses } from "@/lib/density";
 import { assignUserRole, updateUserName, adminResetPassword } from "@/lib/actions/admin";
 import { UserTasks } from "@/components/admin/user-tasks";
 import { DeleteUserDialog } from "@/components/admin/delete-user-dialog";
@@ -38,13 +41,15 @@ export function UsersManager({
   distributions: Dist[];
   currentAdminId: string;
 }) {
+  const { density } = useDensity();
+  const d = densityClasses(density);
   return (
-    <GlassCard className="p-6">
+    <GlassCard className={d.cardPad}>
       <h2 className="mb-4 text-sm font-semibold text-fg">Usuarios</h2>
       {users.length === 0 ? (
         <p className="text-sm text-muted">No hay usuarios todavía.</p>
       ) : (
-        <ul className="space-y-3">
+        <ul className={cn("flex flex-col", d.rowGap)}>
           {users.map((u) => (
             <UserRow key={u.id} user={u} distributions={distributions} currentAdminId={currentAdminId} />
           ))}
@@ -63,6 +68,8 @@ function UserRow({
   distributions: Dist[];
   currentAdminId: string;
 }) {
+  const { density } = useDensity();
+  const d = densityClasses(density);
   const [name, setName] = useState(user.full_name ?? "");
   const [role, setRole] = useState<string>(user.role ?? "");
   const [dist, setDist] = useState<string>(user.distribution_id ?? "");
@@ -102,7 +109,7 @@ function UserRow({
   }
 
   return (
-    <li className="flex flex-col gap-2 border-b border-white/30 pb-3 last:border-0 dark:border-white/10 sm:flex-row sm:flex-wrap sm:items-start">
+    <li className={cn("flex flex-col gap-2 border-b border-white/30 last:border-0 dark:border-white/10 sm:flex-row sm:flex-wrap sm:items-start", d.compact ? "pb-2" : "pb-3")}>
       <div className="flex-1">
         <Input
           value={name}

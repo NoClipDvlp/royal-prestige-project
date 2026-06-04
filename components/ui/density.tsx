@@ -2,17 +2,25 @@
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { Maximize2, Minimize2 } from "lucide-react";
+import { DENSITY_COOKIE, type Density } from "@/lib/density";
 
-type Density = "compact" | "comfortable";
 type DensityCtx = { density: Density; toggle: () => void };
 
 const Ctx = createContext<DensityCtx>({ density: "comfortable", toggle: () => {} });
 
-/** Patrón "vista compacta / ampliada" (SPEC §8/§11) vía contexto + data-attribute. */
-export function DensityProvider({ children }: { children: ReactNode }) {
-  const [density, setDensity] = useState<Density>("comfortable");
+/**
+ * Densidad GLOBAL del toggle del header (SPEC §8/§11). El estado inicial llega del server
+ * (cookie leída en el layout (app)) → primer paint correcto, sin flash de hidratación. El toggle
+ * persiste la elección en la misma cookie para futuras cargas/navegaciones.
+ */
+export function DensityProvider({ children, initial = "comfortable" }: { children: ReactNode; initial?: Density }) {
+  const [density, setDensity] = useState<Density>(initial);
   const toggle = () =>
-    setDensity((d) => (d === "compact" ? "comfortable" : "compact"));
+    setDensity((d) => {
+      const next: Density = d === "compact" ? "comfortable" : "compact";
+      document.cookie = `${DENSITY_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
+      return next;
+    });
   return (
     <Ctx.Provider value={{ density, toggle }}>
       <div data-density={density}>{children}</div>

@@ -6,6 +6,7 @@ import { useDensity } from "@/components/ui/density";
 import { GlassCard } from "@/components/ui/card";
 import { StatusToggle } from "@/components/tasks/status-toggle";
 import { cn } from "@/lib/cn";
+import { densityClasses } from "@/lib/density";
 import type { DayItem, TaskPriority } from "@/lib/tasks/types";
 
 const PRIORITY_DOT: Record<TaskPriority, string> = {
@@ -28,7 +29,8 @@ export function TodayTasks({
   action?: ReactNode;
 }) {
   const { density } = useDensity();
-  const compact = density === "compact";
+  const d = densityClasses(density);
+  const compact = d.compact;
 
   const sorted = [...items].sort((a, b) =>
     (a.timeSlot ?? "99:99").localeCompare(b.timeSlot ?? "99:99"),
@@ -57,21 +59,16 @@ export function TodayTasks({
           .
         </GlassCard>
       ) : (
-        <GlassCard className={cn("divide-y divide-white/40 dark:divide-white/10", compact ? "p-1.5" : "p-2")}>
+        <GlassCard className={cn("divide-y divide-white/40 dark:divide-white/10", d.listPad)}>
           {sorted.map((it) => (
-            <div
-              key={it.taskId}
-              className={cn("flex items-center gap-3", compact ? "px-2 py-1.5" : "px-3 py-3")}
-            >
+            <div key={it.taskId} className={cn("flex items-center", d.rowGap, d.rowPad)}>
               <span className={cn("shrink-0 text-xs text-muted", compact ? "w-10" : "w-12")}>
                 {it.timeSlot ?? "—"}
               </span>
-              {!compact && (
+              {d.showSecondary && (
                 <span className={cn("h-2 w-2 shrink-0 rounded-full", PRIORITY_DOT[it.priority])} aria-hidden />
               )}
-              <span className={cn("flex-1 truncate text-fg", compact ? "text-sm" : "text-sm sm:text-base")}>
-                {it.title}
-              </span>
+              <span className={cn("flex-1 truncate text-fg", d.title)}>{it.title}</span>
               <StatusToggle taskId={it.taskId} date={it.date} status={it.status} />
             </div>
           ))}
