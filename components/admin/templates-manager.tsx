@@ -7,6 +7,7 @@ import { GlassCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { WeekdayPicker } from "@/components/tasks/weekday-picker";
 import { cn } from "@/lib/cn";
 import { densityClasses } from "@/lib/density";
 import { WORKDAY_END, WORKDAY_START } from "@/lib/constants";
@@ -39,6 +40,7 @@ export type AdminTemplateItem = {
   recurrence: TaskRecurrence;
   timeSlot: string | null;
   durationMinutes: number | null;
+  weekdays: number[] | null;
 };
 export type AdminTemplate = {
   id: string;
@@ -304,6 +306,7 @@ function ItemForm({
   const [recurrence, setRecurrence] = useState<TaskRecurrence>(item?.recurrence ?? "once");
   const [priority, setPriority] = useState<TaskPriority>(item?.priority ?? "medium");
   const [categoryId, setCategoryId] = useState<string>(item?.categoryId ?? "");
+  const [weekdays, setWeekdays] = useState<number[]>(item?.weekdays ?? []);
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -321,6 +324,7 @@ function ItemForm({
       recurrence,
       timeSlot: hour != null ? `${String(hour).padStart(2, "0")}:00` : null,
       durationMinutes: duration,
+      weekdays: recurrence === "weekly" ? weekdays : null, // ADR-0019
     };
     start(async () => {
       const r = item ? await updateTemplateItem(item.id, payload) : await createTemplateItem(templateId as string, payload);
@@ -366,6 +370,12 @@ function ItemForm({
             ))}
           </Select>
         </div>
+        {recurrence === "weekly" && (
+          <div className="flex flex-col gap-1">
+            <span className="px-1 text-[11px] text-muted">Días de la semana</span>
+            <WeekdayPicker value={weekdays} onChange={setWeekdays} />
+          </div>
+        )}
         {err ? <p className="text-xs text-red-500">{err}</p> : null}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onDone} className="h-8 text-xs">Cancelar</Button>
