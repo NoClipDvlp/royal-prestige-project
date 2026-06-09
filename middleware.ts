@@ -36,21 +36,36 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   let hasRole = false;
+  let mustSetPassword = false;
   if (user) {
-    // Perfil ausente (orfandad) o role=null → hasRole=false → /sin-rol. Fail-closed ante error.
-    const { data } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle();
+    // hasRole: perfil ausente (orfandad)/role=null/error de SELECT → false → /sin-rol (fail-closed, restrictivo).
+    // must_set_password (ADR-0022): la COLUMNA es la fuente fresca (sin staleness) y app_metadata el respaldo.
+    // Si el SELECT falla, la columna queda indeterminada (data=null) y el gate recae en app_metadata: a propósito
+    // NO se fuerza true ante error transitorio (eso expulsaría a TODA la base a /auth/reset); el respaldo ya cubre
+    // el flujo PKCE. En operación normal columna y app_metadata se mantienen consistentes (admin setea ambos,
+    // changeOwnPassword limpia ambos), así que la ventana de divergencia es nula.
+    const { data } = await supabase.from("users").select("role, must_set_password").eq("id", user.id).maybeSingle();
     hasRole = Boolean(data?.role);
+    mustSetPassword =
+      Boolean(data?.must_set_password) ||
+      Boolean((user.app_metadata as Record<string, unknown> | undefined)?.must_set_password);
   }
 
   const target = resolveAuthRedirect(request.nextUrl.pathname, {
     authenticated: Boolean(user),
     hasRole,
+    mustSetPassword,
   });
 
-  if (target && target !== request.nextUrl.pathname) {
-    const url = request.nextUrl.clone();
-    url.pathname = target;
-    return NextResponse.redirect(url);
+  if (target) {
+    const [p, q] = target.split("?"); // el target puede llevar query (set-password = /auth/reset?mode=update)
+    if (p !== request.nextUrl.pathname) {
+      // anti-bucle: compara solo el path
+      const url = request.nextUrl.clone();
+      url.pathname = p;
+      url.search = q ? `?${q}` : "";
+      return NextResponse.redirect(url);
+    }
   }
 
   return response;
