@@ -21,7 +21,14 @@ export type TemplateItemInput = {
   recurrence: TaskRecurrence;
   timeSlot?: string | null; // HH:MM
   durationMinutes?: number | null;
+  weekdays?: number[] | null; // ADR-0019: días isodow 1=lun…7=dom; solo weekly
 };
+
+/** weekdays solo para weekly con al menos un día; el resto → null. */
+function tplWeekdays(recurrence: TaskRecurrence, weekdays?: number[] | null): number[] | null {
+  if (recurrence !== "weekly") return null;
+  return weekdays && weekdays.length > 0 ? weekdays : null;
+}
 
 async function requireAdmin(): Promise<Result | null> {
   const profile = await getProfile();
@@ -84,6 +91,7 @@ export async function createTemplateItem(templateId: string, item: TemplateItemI
     recurrence: item.recurrence,
     time_slot: item.timeSlot ?? null,
     duration_minutes: item.durationMinutes ?? null, // CHECK en DB (0008): >0 y tope 22:00
+    weekdays: tplWeekdays(item.recurrence, item.weekdays), // ADR-0019
   });
   if (error) return { ok: false, error: error.message };
   revalidatePath("/admin");
@@ -100,6 +108,9 @@ export async function updateTemplateItem(id: string, changes: Partial<TemplateIt
   if (changes.recurrence !== undefined) patch.recurrence = changes.recurrence;
   if (changes.timeSlot !== undefined) patch.time_slot = changes.timeSlot;
   if (changes.durationMinutes !== undefined) patch.duration_minutes = changes.durationMinutes;
+  // ADR-0019: si llega recurrence (el form manda payload completo), normaliza weekdays por ella.
+  if (changes.recurrence !== undefined) patch.weekdays = tplWeekdays(changes.recurrence, changes.weekdays);
+  else if (changes.weekdays !== undefined) patch.weekdays = changes.weekdays;
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.from("template_items").update(patch).eq("id", id);
   if (error) return { ok: false, error: error.message };
@@ -128,6 +139,7 @@ type ItemRow = {
   recurrence: TaskRecurrence;
   time_slot: string | null;
   duration_minutes: number | null;
+  weekdays: number[] | null;
 };
 
 /**
@@ -148,7 +160,7 @@ export async function assignTemplate(templateId: string, userIds: string[]): Pro
 
   const { data: itemsData, error: ie } = await supabase
     .from("template_items")
-    .select("id, title, category_id, priority, recurrence, time_slot, duration_minutes")
+    .select("id, title, category_id, priority, recurrence, time_slot, duration_minutes, weekdays")
     .eq("template_id", templateId);
   if (ie) return { ok: false, error: ie.message };
   const items = (itemsData ?? []) as ItemRow[];
@@ -177,6 +189,7 @@ export async function assignTemplate(templateId: string, userIds: string[]): Pro
       start_date: today,
       time_slot: it.time_slot,
       duration_minutes: it.duration_minutes,
+      weekdays: it.weekdays,
       origin: "superior",
       assigned_by_user_id: admin.id,
       template_id: templateId,
@@ -295,7 +308,7 @@ export async function propagateTemplate(templateId: string): Promise<Result> {
 
   const { data: itemsData } = await supabase
     .from("template_items")
-    .select("id, title, category_id, priority, recurrence, time_slot, duration_minutes")
+    .select("id, title, category_id, priority, recurrence, time_slot, duration_minutes, weekdays")
     .eq("template_id", templateId);
   const items = (itemsData ?? []) as ItemRow[];
   if (items.length === 0) return { ok: true };
@@ -319,6 +332,7 @@ export async function propagateTemplate(templateId: string): Promise<Result> {
         recurrence: it.recurrence,
         time_slot: it.time_slot,
         duration_minutes: it.duration_minutes,
+        weekdays: it.weekdays,
       })
       .eq("template_item_id", it.id)
       .is("customized_at", null)

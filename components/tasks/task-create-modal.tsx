@@ -6,6 +6,7 @@ import { GlassCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { WeekdayPicker } from "@/components/tasks/weekday-picker";
 import { createTask } from "@/lib/actions/tasks";
 import { WORKDAY_END, WORKDAY_START } from "@/lib/constants";
 import {
@@ -44,6 +45,7 @@ export function TaskCreateModal({
   const [hour, setHour] = useState(startHour);
   const [duration, setDuration] = useState<number | null>(durationMin);
   const [recurrence, setRecurrence] = useState<TaskRecurrence>("once");
+  const [weekdays, setWeekdays] = useState<number[]>([]);
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [categoryId, setCategoryId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +85,7 @@ export function TaskCreateModal({
         durationMinutes: duration,
         priority,
         categoryId: categoryId || null,
+        weekdays: recurrence === "weekly" ? weekdays : null, // ADR-0019
       });
       if (!res.ok) setError(res.error ?? "No se pudo crear la tarea.");
       else onClose();
@@ -176,6 +179,13 @@ export function TaskCreateModal({
               </Select>
             </label>
           </div>
+
+          {recurrence === "weekly" && (
+            <label className="space-y-1">
+              <span className="px-1 text-[11px] text-muted">Días de la semana</span>
+              <WeekdayPicker value={weekdays} onChange={setWeekdays} />
+            </label>
+          )}
 
           <label className="space-y-1">
             <span className="px-1 text-[11px] text-muted">Categoría</span>

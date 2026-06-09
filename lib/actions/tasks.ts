@@ -18,7 +18,14 @@ type CreateInput = {
   durationMinutes?: number | null; // ADR-0011: bloque en la franja; null = punto
   priority: TaskPriority;
   categoryId?: string | null;
+  weekdays?: number[] | null; // ADR-0019: días isodow 1=lun…7=dom; solo weekly (null/empty = legacy)
 };
+
+/** weekdays solo aplica a weekly y con al menos un día; el resto → null (legacy / no aplica). */
+function normalizeWeekdays(recurrence: TaskRecurrence, weekdays?: number[] | null): number[] | null {
+  if (recurrence !== "weekly") return null;
+  return weekdays && weekdays.length > 0 ? weekdays : null;
+}
 
 type EditChanges = {
   title?: string;
@@ -54,6 +61,7 @@ export async function createTask(input: CreateInput): Promise<ActionResult> {
     duration_minutes: input.durationMinutes ?? null, // CHECK en DB: >0 y tope 22:00 (0004)
     priority: input.priority,
     category_id: input.categoryId ?? null,
+    weekdays: normalizeWeekdays(input.recurrence, input.weekdays), // ADR-0019
   });
   if (error) return { ok: false, error: error.message };
   revalidatePath("/tareas"); // el trigger de alta materializa la instancia de hoy si due
