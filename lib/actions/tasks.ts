@@ -32,6 +32,8 @@ type EditChanges = {
   timeSlot?: string | null;
   priority?: TaskPriority;
   categoryId?: string | null;
+  recurrence?: TaskRecurrence; // ADR-0019/nota2: editar recurrencia (incl. once→recurrente)
+  weekdays?: number[] | null; // días isodow; solo aplica a weekly
 };
 
 function minusOneDay(isoDate: string): string {
@@ -113,7 +115,13 @@ export async function updateTask(
   if (changes.categoryId !== undefined) taskPatch.category_id = changes.categoryId;
 
   if (scope === "all") {
-    const { error } = await supabase.from("tasks").update(taskPatch).eq("id", taskId);
+    // recurrence/weekdays son de SERIE → van al patch de tasks (NUNCA al de this_day, que actualiza instances).
+    const seriesPatch: Record<string, unknown> = { ...taskPatch };
+    if (changes.recurrence !== undefined) {
+      seriesPatch.recurrence = changes.recurrence;
+      seriesPatch.weekdays = normalizeWeekdays(changes.recurrence, changes.weekdays);
+    }
+    const { error } = await supabase.from("tasks").update(seriesPatch).eq("id", taskId);
     if (error) return { ok: false, error: error.message };
   } else if (scope === "this_day") {
     const { data: inst } = await supabase
@@ -152,15 +160,18 @@ export async function updateTask(
     if (!t) return { ok: false, error: "Tarea no encontrada." };
     const e1 = await supabase.from("tasks").update({ recurrence_until: minusOneDay(date) }).eq("id", taskId);
     if (e1.error) return { ok: false, error: e1.error.message };
+    // la NUEVA serie (desde date) nace con la recurrencia/días editados (o los de la serie original).
+    const newRecurrence = (changes.recurrence ?? t.recurrence) as TaskRecurrence;
     const e2 = await supabase.from("tasks").insert({
       owner_user_id: t.owner_user_id,
       distribution_id: t.distribution_id,
       title: changes.title ?? t.title,
-      recurrence: t.recurrence,
+      recurrence: newRecurrence,
       start_date: date,
       time_slot: changes.timeSlot ?? t.time_slot,
       priority: changes.priority ?? t.priority,
       category_id: changes.categoryId ?? t.category_id,
+      weekdays: normalizeWeekdays(newRecurrence, changes.weekdays ?? (t.weekdays as number[] | null)),
     });
     if (e2.error) return { ok: false, error: e2.error.message };
   }

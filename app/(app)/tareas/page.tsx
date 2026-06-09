@@ -25,7 +25,7 @@ async function loadInstances(supabase: DB, date: string): Promise<DayItem[]> {
   const { data } = await supabase
     .from("task_instances")
     .select(
-      "task_id, date, status_pct, title, time_slot, duration_minutes, priority, tasks(title, time_slot, duration_minutes, priority, recurrence, deleted_at)",
+      "task_id, date, status_pct, title, time_slot, duration_minutes, priority, tasks(title, time_slot, duration_minutes, priority, recurrence, weekdays, deleted_at)",
     )
     .eq("date", date);
 
@@ -35,6 +35,7 @@ async function loadInstances(supabase: DB, date: string): Promise<DayItem[]> {
     duration_minutes: number | null;
     priority: string | null;
     recurrence: string | null;
+    weekdays: number[] | null;
     deleted_at: string | null;
   };
   type Row = {
@@ -59,6 +60,7 @@ async function loadInstances(supabase: DB, date: string): Promise<DayItem[]> {
       durationMinutes: r.duration_minutes ?? t?.duration_minutes ?? null,
       priority: (r.priority ?? t?.priority ?? "medium") as TaskPriority,
       recurrence: (t?.recurrence ?? "once") as TaskRecurrence,
+      weekdays: t?.weekdays ?? null,
       status: (r.status_pct ?? 0) as StatusPct,
     }));
 }
@@ -74,6 +76,7 @@ async function loadProjection(supabase: DB, date: string): Promise<DayItem[]> {
     duration_minutes: number | null;
     priority: string | null;
     recurrence: string | null;
+    weekdays: number[] | null;
   };
 
   return ((data ?? []) as unknown as TaskRow[]).map((t) => ({
@@ -84,6 +87,7 @@ async function loadProjection(supabase: DB, date: string): Promise<DayItem[]> {
     durationMinutes: t.duration_minutes ?? null,
     priority: (t.priority ?? "medium") as TaskPriority,
     recurrence: (t.recurrence ?? "once") as TaskRecurrence,
+    weekdays: t.weekdays ?? null,
     status: 0 as StatusPct, // el futuro no tiene instancia materializada → sin estado
   }));
 }
