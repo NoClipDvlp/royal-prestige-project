@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { changeOwnPassword } from "@/lib/actions/account";
 
 export function ResetForm({ mode }: { mode: "request" | "update" }) {
   const router = useRouter();
@@ -33,14 +34,18 @@ export function ResetForm({ mode }: { mode: "request" | "update" }) {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.updateUser({ password });
-    setLoading(false);
-    if (error) {
-      setError("No se pudo actualizar. Abre de nuevo el enlace del email.");
+    // changeOwnPassword: actualiza la clave + limpia must_set_password + manda aviso de seguridad.
+    const r = await changeOwnPassword(password);
+    if (!r.ok) {
+      setLoading(false);
+      setError(r.error ?? "No se pudo actualizar. Abre de nuevo el enlace del email.");
       return;
     }
+    // Refrescar el JWT para que traiga app_metadata sin el flag → la app deja de forzar la pantalla.
+    await createSupabaseBrowserClient().auth.refreshSession();
+    setLoading(false);
     router.replace("/");
+    router.refresh();
   }
 
   if (mode === "update") {

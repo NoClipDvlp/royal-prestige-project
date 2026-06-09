@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { checkEmailAvailable } from "@/lib/actions/account";
 
 export function SignupForm() {
   const router = useRouter();
@@ -28,6 +29,13 @@ export function SignupForm() {
       return;
     }
     setLoading(true);
+    // B6: bloquear email ya registrado (Supabase, con confirm-email, no devuelve error → lo chequeamos).
+    const { available } = await checkEmailAvailable(email);
+    if (!available) {
+      setLoading(false);
+      setError("Ese email ya está registrado. Inicia sesión o recupera tu contraseña.");
+      return;
+    }
     const supabase = createSupabaseBrowserClient();
     const { error } = await supabase.auth.signUp({
       email,
