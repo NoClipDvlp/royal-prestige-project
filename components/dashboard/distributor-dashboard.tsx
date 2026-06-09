@@ -1,6 +1,6 @@
 import { GlassCard } from "@/components/ui/card";
 import { Greeting } from "@/components/greeting";
-import { ComplianceCard } from "@/components/metrics/compliance-card";
+import { RefreshButton } from "@/components/metrics/refresh-button";
 import { TodayTasks } from "@/components/dashboard/today-tasks";
 import { QuickAddButton } from "@/components/dashboard/quick-add-button";
 import type { TaskCategory } from "@/components/tasks/task-create-modal";
@@ -9,7 +9,8 @@ import type { DayItem } from "@/lib/tasks/types";
 
 /**
  * Dashboard del distribuidor con datos reales (ADR-0009 + ADR-0012). Presentacional.
- * Saludo (meta semanal) + tarjeta de cumplimiento con toggle día/semana/mes + tareas de hoy.
+ * Saludo (meta semanal) + tareas de hoy. La tarjeta de cumplimiento se movió a /tareas (#9 QA Tanda 2):
+ * el home queda sin ruido visual; en v2 se reactiva en home con métricas de EQUIPO.
  */
 export function DistributorDashboard({
   name,
@@ -30,10 +31,11 @@ export function DistributorDashboard({
   return (
     <div className="flex flex-col gap-5">
       <GlassCard className="p-6">
-        <Greeting name={name} goalPct={weekPct} pending={pendingToday} />
+        <div className="flex items-start justify-between gap-3">
+          <Greeting name={name} goalPct={weekPct} pending={pendingToday} />
+          <RefreshButton label="Refrescar" />
+        </div>
       </GlassCard>
-
-      <ComplianceCard data={compliance} defaultRange="week" />
 
       <TodayTasks
         items={today}

@@ -244,8 +244,9 @@ function Cell({ on, changed, onClick }: { on: boolean; changed: boolean; onClick
         "inline-flex h-5 w-5 items-center justify-center rounded-md border transition",
         on && !changed && "border-transparent bg-accent text-accent-fg",
         on && changed && "border-accent bg-accent/30 text-accent ring-1 ring-accent",
-        !on && changed && "border-red-400/70 bg-white/50 ring-1 ring-red-400/50 dark:bg-white/5",
-        !on && !changed && "border-white/70 bg-white/50 dark:border-white/15 dark:bg-white/5",
+        // #7: en claro el blanco no contrastaba → borde/relleno con el token fg (oscuro en claro); dark intacto.
+        !on && changed && "border-red-400/70 bg-fg/[0.04] ring-1 ring-red-400/50 dark:bg-white/5",
+        !on && !changed && "border-fg/30 bg-fg/[0.04] dark:border-white/20 dark:bg-white/5",
       )}
     >
       {on && <Check size={12} />}

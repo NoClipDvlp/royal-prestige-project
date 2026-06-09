@@ -1,10 +1,13 @@
 import { Suspense } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageTitle } from "@/components/page-title";
-import { BoardSkeleton } from "@/components/skeletons";
+import { BoardSkeleton, SkeletonCard } from "@/components/skeletons";
+import { RefreshButton } from "@/components/metrics/refresh-button";
+import { ComplianceCard } from "@/components/metrics/compliance-card";
 import { DayNav } from "@/components/tasks/day-nav";
 import { TareasBoard } from "@/components/tasks/tareas-board";
 import type { TaskCategory } from "@/components/tasks/task-create-modal";
+import { complianceByRanges } from "@/lib/metrics/server";
 import { bogotaToday } from "@/lib/dashboard/week";
 import { isValidIsoDate } from "@/lib/tasks/dates";
 import type { DayItem, StatusPct, TaskPriority, TaskRecurrence } from "@/lib/tasks/types";
@@ -94,6 +97,13 @@ async function TareasData({ date, editable }: { date: string; editable: boolean 
   return <TareasBoard items={items} date={date} editable={editable} categories={categories} />;
 }
 
+// Cumplimiento del usuario (movido del home, #9 QA Tanda 2). Streamea aparte para no bloquear el shell.
+async function TareasCompliance() {
+  const supabase = await createSupabaseServerClient();
+  const compliance = await complianceByRanges(supabase, bogotaToday());
+  return <ComplianceCard data={compliance} defaultRange="week" />;
+}
+
 export default async function TareasPage({
   searchParams,
 }: {
@@ -106,10 +116,16 @@ export default async function TareasPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <PageTitle
-        title="Tareas"
-        subtitle="Tu día por franjas (8:00–22:00). Arrastra sobre una franja para crear."
-      />
+      <div className="flex items-start justify-between gap-3">
+        <PageTitle
+          title="Tareas"
+          subtitle="Tu día por franjas (8:00–22:00). Arrastra sobre una franja para crear."
+        />
+        <RefreshButton label="Refrescar" />
+      </div>
+      <Suspense fallback={<SkeletonCard className="h-44" />}>
+        <TareasCompliance />
+      </Suspense>
       <DayNav date={date} today={today} />
       <Suspense key={date} fallback={<BoardSkeleton />}>
         <TareasData date={date} editable={editable} />

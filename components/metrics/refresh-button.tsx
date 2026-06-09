@@ -12,7 +12,7 @@ import { cn } from "@/lib/cn";
  * navegar — y preserva el estado de los client components (rango/grano/dimensión seleccionados). El
  * useTransition expone isPending → spinner sutil mientras el RSC se vuelve a resolver.
  */
-export function RefreshButton() {
+export function RefreshButton({ label = "Refrescar métricas" }: { label?: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   return (
@@ -21,7 +21,7 @@ export function RefreshButton() {
       size="icon"
       onClick={() => start(() => router.refresh())}
       disabled={pending}
-      aria-label="Refrescar métricas"
+      aria-label={label}
       title="Refrescar"
       className="text-muted hover:text-fg"
     >
