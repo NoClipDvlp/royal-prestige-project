@@ -211,6 +211,11 @@ export async function adminCreateUser(
   const roleRes = await assignUserRole(created.user.id, role, distributionId, { notify: false });
   if (!roleRes.ok) return { ok: false, error: `Usuario creado, pero falló asignar el rol: ${roleRes.error}` };
 
+  // 2.5) Marca el flag en la COLUMNA (fuente de verdad del middleware, ADR-0022). service_role → auth.uid()
+  //      null → el trigger lo permite. Junto al app_metadata ya seteado en createUser → ambos consistentes.
+  const { error: mspErr } = await admin.from("users").update({ must_set_password: true }).eq("id", created.user.id);
+  if (mspErr) return { ok: false, error: `Usuario creado, pero no se pudo forzar el cambio de clave: ${mspErr.message}` };
+
   // 3) Enlace "establece tu contraseña" (recovery → /auth/reset?mode=update). generateLink NO envía correo.
   const origin = await requestOrigin();
   const next = encodeURIComponent("/auth/reset?mode=update");
@@ -268,6 +273,10 @@ export async function adminResetPassword(userId: string): Promise<Result> {
     app_metadata: { must_set_password: true }, // fuerza el cambio al entrar
   });
   if (ue) return { ok: false, error: ue.message };
+
+  // Flag en la COLUMNA (fuente de verdad del middleware, ADR-0022) — service_role, junto al app_metadata.
+  const { error: mspErr } = await admin.from("users").update({ must_set_password: true }).eq("id", userId);
+  if (mspErr) return { ok: false, error: `Clave reseteada, pero no se pudo forzar el cambio: ${mspErr.message}` };
 
   const origin = await requestOrigin();
   const next = encodeURIComponent("/auth/reset?mode=update");

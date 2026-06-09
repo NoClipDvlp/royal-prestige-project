@@ -24,12 +24,17 @@ export async function changeOwnPassword(newPassword: string): Promise<Result> {
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) return { ok: false, error: "No se pudo cambiar la contraseña." };
 
-  // Limpiar el flag forzado (si estaba) — service_role sobre el PROPIO id.
+  // Limpiar el flag forzado en AMBAS fuentes (columna = fuente de verdad del middleware + app_metadata = respaldo).
+  // service_role sobre el PROPIO id: el trigger BLOQUEA al usuario que se limpia a sí mismo (auth.uid() no null);
+  // por eso vamos por service_role (auth.uid() null → permitido). NO best-effort: si la columna no se limpia, el
+  // middleware (columna OR app_metadata) deja al usuario atrapado en /auth/reset → lockout. ok:false → reintenta.
   try {
     const admin = createSupabaseAdminClient();
+    const { error: colErr } = await admin.from("users").update({ must_set_password: false }).eq("id", user.id);
+    if (colErr) return { ok: false, error: "Contraseña cambiada, pero no se pudo finalizar. Vuelve a intentarlo." };
     await admin.auth.admin.updateUserById(user.id, { app_metadata: { must_set_password: false } });
   } catch {
-    // si falla, la intercepción reaparecerá; no es crítico para la seguridad.
+    return { ok: false, error: "Contraseña cambiada, pero no se pudo finalizar. Vuelve a intentarlo." };
   }
 
   // Aviso de seguridad (best-effort).
