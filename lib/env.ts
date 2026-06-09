@@ -24,3 +24,16 @@ export const publicEnv = {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     ),
 };
+
+/**
+ * Variables SERVER-ONLY de SMTP (correo de alta, #3). NO son NEXT_PUBLIC → nunca se bundlean al cliente.
+ * Lectura perezosa (solo al enviar) → no rompen el build si faltan. Se leen únicamente desde lib/email.
+ */
+export const serverEnv = {
+  smtpHost: () => required("SMTP_HOST", process.env.SMTP_HOST),
+  smtpPort: () => Number(required("SMTP_PORT", process.env.SMTP_PORT)),
+  smtpUser: () => required("SMTP_USER", process.env.SMTP_USER),
+  smtpPass: () => required("SMTP_PASS", process.env.SMTP_PASS),
+  smtpFrom: () =>
+    process.env.SMTP_FROM ?? `Pistacore <${required("SMTP_USER", process.env.SMTP_USER)}>`,
+};

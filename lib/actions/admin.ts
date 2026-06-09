@@ -6,9 +6,19 @@
 //  • Alta/reset de usuarios (API GoTrue): service_role GATEADO por assertCallerIsAdmin().
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { assertCallerIsAdmin, getProfile, type AppRole } from "@/lib/auth/server";
 import { createSupabaseAdminClient, createSupabasePasswordProbeClient } from "@/lib/supabase/admin";
+import { sendWelcomeEmail } from "@/lib/email/mailer";
+
+/** Origin absoluto del request (para el redirectTo del enlace de set-password). */
+async function requestOrigin(): Promise<string> {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  return `${proto}://${host}`;
+}
 
 type Result = { ok: boolean; error?: string };
 
@@ -126,25 +136,72 @@ export async function createGlobalCategory(name: string, color: string | null): 
 }
 
 /** Crear usuario con contraseña TEMPORAL (sin invitación por email — DEBT-0008). service_role GATEADO. */
+/**
+ * Alta de usuario ATÓMICA con rol (#3, ADR auth/cuenta): crea el usuario, fija rol+distribución y envía
+ * un correo de bienvenida con un ENLACE para que establezca su propia contraseña (sin credencial en texto).
+ * Reemplaza el flujo de contraseña temporal (DEBT-0008 cerrada). Requiere SMTP configurado (ver DEPLOY).
+ */
 export async function adminCreateUser(
   email: string,
-  tempPassword: string,
   fullName: string,
+  role: AppRole,
+  distributionId: string | null,
 ): Promise<Result> {
   try {
     await assertCallerIsAdmin(); // ⚠ gate ANTES de tocar service_role
   } catch {
     return { ok: false, error: "Operación restringida a admin." };
   }
+  const needsDist = role === "distributor" || role === "jd" || role === "seller";
+  if (needsDist && !distributionId) return { ok: false, error: "Un distribuidor requiere una distribución." };
+
   const admin = createSupabaseAdminClient();
-  const { error } = await admin.auth.admin.createUser({
+  // 1) Crear con contraseña aleatoria FUERTE que nunca se comparte (el usuario fija la suya por el enlace).
+  const randomPwd = `Rc-${crypto.randomUUID()}-${crypto.randomUUID().slice(0, 8)}`;
+  const { data: created, error: ce } = await admin.auth.admin.createUser({
     email,
-    password: tempPassword,
-    email_confirm: true, // sin SMTP: lo confirmamos para que pueda entrar (DEBT-0008)
+    password: randomPwd,
+    email_confirm: true,
     user_metadata: { full_name: fullName },
   });
-  if (error) return { ok: false, error: error.message };
-  // El trigger handle_new_user crea el perfil role=null; el admin asigna rol con su sesión.
+  if (ce || !created.user) return { ok: false, error: ce?.message ?? "No se pudo crear el usuario." };
+
+  // 2) Rol+distribución con la SESIÓN admin (el trigger forbid_self_privilege_escalation exige
+  //    app_current_role()='admin'; service_role lo bloquearía — workaround DEBT-0010, reusa assignUserRole).
+  const roleRes = await assignUserRole(created.user.id, role, distributionId);
+  if (!roleRes.ok) return { ok: false, error: `Usuario creado, pero falló asignar el rol: ${roleRes.error}` };
+
+  // 3) Enlace "establece tu contraseña" (recovery → /auth/reset?mode=update). generateLink NO envía correo.
+  const origin = await requestOrigin();
+  const next = encodeURIComponent("/auth/reset?mode=update");
+  const { data: linkData, error: le } = await admin.auth.admin.generateLink({
+    type: "recovery",
+    email,
+    options: { redirectTo: `${origin}/auth/callback?next=${next}` },
+  });
+  if (le || !linkData?.properties?.action_link) {
+    return { ok: false, error: "Usuario y rol creados, pero no se pudo generar el enlace de contraseña." };
+  }
+
+  // 4) Nombre de distribución (para el correo) + envío del correo rico.
+  let distributionName: string | null = null;
+  if (distributionId) {
+    const supabase = await createSupabaseServerClient();
+    const { data: d } = await supabase.from("distributions").select("name").eq("id", distributionId).maybeSingle();
+    distributionName = (d?.name as string | undefined) ?? null;
+  }
+  try {
+    await sendWelcomeEmail({
+      to: email,
+      fullName,
+      role,
+      distributionName,
+      setPasswordLink: linkData.properties.action_link,
+    });
+  } catch (e) {
+    return { ok: false, error: `Usuario creado, pero el correo no se envió (revisa SMTP): ${(e as Error).message}` };
+  }
+
   revalidatePath("/admin");
   return { ok: true };
 }
