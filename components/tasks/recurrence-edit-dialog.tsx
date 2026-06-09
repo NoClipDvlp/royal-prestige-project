@@ -26,6 +26,7 @@ export function RecurrenceEditDialog({
   onClose: () => void;
 }) {
   const [title, setTitle] = useState("");
+  const [timeSlot, setTimeSlot] = useState(""); // "HH:MM"; "" = sin hora
   const [recurrence, setRecurrence] = useState<TaskRecurrence>("once");
   const [weekdays, setWeekdays] = useState<number[]>([]);
   const [confirming, setConfirming] = useState(false);
@@ -34,6 +35,7 @@ export function RecurrenceEditDialog({
   useEffect(() => {
     if (item) {
       setTitle(item.title);
+      setTimeSlot(item.timeSlot ? item.timeSlot.slice(0, 5) : ""); // "HH:MM:SS" → "HH:MM"
       setRecurrence(item.recurrence);
       setWeekdays(item.weekdays ?? []);
     }
@@ -46,7 +48,12 @@ export function RecurrenceEditDialog({
   function save(scope: EditScope) {
     if (!item) return;
     start(async () => {
-      await updateTask(item.taskId, scope, item.date, { title, recurrence, weekdays });
+      await updateTask(item.taskId, scope, item.date, {
+        title,
+        timeSlot: timeSlot ? timeSlot : null, // "" → null (sin hora)
+        recurrence,
+        weekdays,
+      });
       onClose();
     });
   }
@@ -74,6 +81,28 @@ export function RecurrenceEditDialog({
             <span className="px-1 text-[11px] text-muted">Título</span>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Título" aria-label="Título" />
           </label>
+
+          <div className="space-y-1">
+            <span className="px-1 text-[11px] text-muted">Hora</span>
+            <div className="flex items-center gap-2">
+              <Input
+                type="time"
+                value={timeSlot}
+                onChange={(e) => setTimeSlot(e.target.value)}
+                aria-label="Hora"
+                className="flex-1"
+              />
+              {timeSlot ? (
+                <button
+                  type="button"
+                  onClick={() => setTimeSlot("")}
+                  className="shrink-0 text-[11px] text-muted transition hover:text-fg"
+                >
+                  Sin hora
+                </button>
+              ) : null}
+            </div>
+          </div>
 
           <label className="space-y-1">
             <span className="px-1 text-[11px] text-muted">Recurrencia</span>
