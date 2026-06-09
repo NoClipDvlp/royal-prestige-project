@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { CheckCircle2, CalendarClock } from "lucide-react";
+import { CheckCircle2, CalendarClock, Printer } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageTitle } from "@/components/page-title";
 import { GlassCard } from "@/components/ui/card";
@@ -184,7 +184,17 @@ export default async function TareasPage({
           title="Tareas"
           subtitle="Tu día por franjas (8:00–22:00). Arrastra sobre una franja para crear."
         />
-        <RefreshButton label="Refrescar" />
+        <div className="flex shrink-0 items-center gap-2">
+          <a
+            href={`/tareas/imprimir?d=${date}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-xl glass elev-1 px-3 py-1.5 text-xs font-medium text-fg transition hover:opacity-90"
+          >
+            <Printer size={14} /> Imprimir cronograma
+          </a>
+          <RefreshButton label="Refrescar" />
+        </div>
       </div>
       <Suspense fallback={<SkeletonCard className="h-44" />}>
         <TareasCompliance />
