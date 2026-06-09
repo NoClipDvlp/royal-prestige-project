@@ -87,7 +87,8 @@ function UserRow({
   function save() {
     setMsg(null);
     start(async () => {
-      const r1 = await assignUserRole(user.id, (role || null) as AppRole | null, dist || null);
+      // notify:true → camino B: si pasa de sin-rol→rol manda bienvenida; si cambia de rol, "tu rol cambió".
+      const r1 = await assignUserRole(user.id, (role || null) as AppRole | null, dist || null, { notify: true });
       if (!r1.ok) return setMsg(r1.error ?? "Error");
       if (name !== (user.full_name ?? "")) {
         const r2 = await updateUserName(user.id, name);
@@ -99,10 +100,10 @@ function UserRow({
 
   function reset() {
     setMsg(null);
-    const temp = `Rc-${crypto.randomUUID().slice(0, 8)}`;
     start(async () => {
-      const r = await adminResetPassword(user.id, temp);
-      setMsg(r.ok ? `Contraseña temporal: ${temp}` : (r.error ?? "Error"));
+      // B2: invalida la clave y envía correo con enlace para que el usuario cree una nueva (sin temporal).
+      const r = await adminResetPassword(user.id);
+      setMsg(r.ok ? "Correo de restablecimiento enviado." : (r.error ?? "Error"));
     });
   }
 

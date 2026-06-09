@@ -1,4 +1,5 @@
 import { AuthShell } from "@/components/auth/auth-shell";
+import { PendingReviewNotifier } from "@/components/auth/pending-review-notifier";
 import { getUser } from "@/lib/auth/server";
 
 // Pantalla de onboarding para usuarios autenticados sin rol (SPEC §5). Solo el mensaje + saludo;
@@ -19,6 +20,7 @@ export default async function SinRolPage() {
         </p>
         <p>En cuanto tengas rol, este panel se desbloquea automáticamente.</p>
       </div>
+      <PendingReviewNotifier />
     </AuthShell>
   );
 }

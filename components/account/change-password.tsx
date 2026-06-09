@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { changeOwnPassword } from "@/lib/actions/account";
 
 /** Cambiar contraseña estando autenticado (#10). updateUser({password}) — sin email. Con repetir + validación. */
 export function ChangePassword() {
@@ -25,14 +25,13 @@ export function ChangePassword() {
       return;
     }
     setLoading(true);
-    const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.updateUser({ password: pwd });
+    const r = await changeOwnPassword(pwd); // actualiza + aviso de seguridad por correo
     setLoading(false);
-    if (error) {
-      setErr("No se pudo cambiar la contraseña.");
+    if (!r.ok) {
+      setErr(r.error ?? "No se pudo cambiar la contraseña.");
       return;
     }
-    setMsg("Contraseña actualizada.");
+    setMsg("Contraseña actualizada. Te enviamos un aviso de seguridad por correo.");
     setPwd("");
     setPwd2("");
   }

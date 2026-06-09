@@ -10,7 +10,7 @@ import { headers } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { assertCallerIsAdmin, getProfile, type AppRole } from "@/lib/auth/server";
 import { createSupabaseAdminClient, createSupabasePasswordProbeClient } from "@/lib/supabase/admin";
-import { sendWelcomeEmail } from "@/lib/email/mailer";
+import { sendWelcomeEmail, sendResetEmail, sendRoleAssignedEmail, sendRoleChangedEmail } from "@/lib/email/mailer";
 
 /** Origin absoluto del request (para el redirectTo del enlace de set-password). */
 async function requestOrigin(): Promise<string> {
@@ -37,11 +37,17 @@ async function requireAdminOrError(): Promise<Result | null> {
   return null;
 }
 
-/** Asignar rol + distribución con la sesión del admin. Respeta CHECK rol↔distribución. */
+/**
+ * Asignar rol + distribución con la sesión del admin. Respeta CHECK rol↔distribución.
+ * notify (B4 ADR-0020): si true y el usuario QUEDA con rol → manda correo (bienvenida si venía sin rol;
+ * "tu rol cambió" si ya tenía otro). El alta-por-admin pasa notify:false (ya envía su bienvenida con link)
+ * → evita el doble correo. Best-effort: un fallo de correo NO revierte la asignación.
+ */
 export async function assignUserRole(
   userId: string,
   role: AppRole | null,
   distributionId: string | null,
+  opts: { notify?: boolean } = {},
 ): Promise<Result> {
   const denied = await requireAdminOrError();
   if (denied) return denied;
@@ -51,8 +57,34 @@ export async function assignUserRole(
   if (needsDist && !dist) return { ok: false, error: "Un distribuidor requiere una distribución." };
 
   const supabase = await createSupabaseServerClient();
+  const { data: before } = await supabase
+    .from("users")
+    .select("role, email, full_name")
+    .eq("id", userId)
+    .maybeSingle();
+  const oldRole = (before?.role as AppRole | null) ?? null;
+
   const { error } = await supabase.from("users").update({ role, distribution_id: dist }).eq("id", userId);
   if (error) return { ok: false, error: error.message };
+
+  if (opts.notify && role && before?.email) {
+    let distributionName: string | null = null;
+    if (dist) {
+      const { data: d } = await supabase.from("distributions").select("name").eq("id", dist).maybeSingle();
+      distributionName = (d?.name as string | undefined) ?? null;
+    }
+    const fullName = (before.full_name as string | undefined) ?? "";
+    try {
+      if (oldRole === null) {
+        await sendRoleAssignedEmail({ to: before.email as string, fullName, role, distributionName });
+      } else if (oldRole !== role) {
+        await sendRoleChangedEmail({ to: before.email as string, fullName, role, distributionName });
+      }
+    } catch {
+      // correo best-effort: la asignación ya quedó hecha.
+    }
+  }
+
   revalidatePath("/admin");
   return { ok: true };
 }
@@ -156,19 +188,27 @@ export async function adminCreateUser(
   if (needsDist && !distributionId) return { ok: false, error: "Un distribuidor requiere una distribución." };
 
   const admin = createSupabaseAdminClient();
-  // 1) Crear con contraseña aleatoria FUERTE que nunca se comparte (el usuario fija la suya por el enlace).
+  // 1) Crear con contraseña aleatoria FUERTE que nunca se comparte + must_set_password (B1, ADR-0020):
+  //    el usuario DEBE fijar la suya antes de usar la app (la intercepción del layout lo fuerza).
   const randomPwd = `Rc-${crypto.randomUUID()}-${crypto.randomUUID().slice(0, 8)}`;
   const { data: created, error: ce } = await admin.auth.admin.createUser({
     email,
     password: randomPwd,
     email_confirm: true,
     user_metadata: { full_name: fullName },
+    app_metadata: { must_set_password: true }, // tamper-resistant (no editable por el usuario)
   });
-  if (ce || !created.user) return { ok: false, error: ce?.message ?? "No se pudo crear el usuario." };
+  if (ce || !created.user) {
+    const msg = /already.*registered|exists/i.test(ce?.message ?? "")
+      ? "Ese email ya está registrado." // B6 dup email
+      : ce?.message ?? "No se pudo crear el usuario.";
+    return { ok: false, error: msg };
+  }
 
   // 2) Rol+distribución con la SESIÓN admin (el trigger forbid_self_privilege_escalation exige
   //    app_current_role()='admin'; service_role lo bloquearía — workaround DEBT-0010, reusa assignUserRole).
-  const roleRes = await assignUserRole(created.user.id, role, distributionId);
+  //    notify:false → camino A NO manda correo de bienvenida-rol (ya envía su propia bienvenida con link).
+  const roleRes = await assignUserRole(created.user.id, role, distributionId, { notify: false });
   if (!roleRes.ok) return { ok: false, error: `Usuario creado, pero falló asignar el rol: ${roleRes.error}` };
 
   // 3) Enlace "establece tu contraseña" (recovery → /auth/reset?mode=update). generateLink NO envía correo.
@@ -206,16 +246,48 @@ export async function adminCreateUser(
   return { ok: true };
 }
 
-/** Reset de contraseña por el admin (fija una temporal). service_role GATEADO. */
-export async function adminResetPassword(userId: string, newPassword: string): Promise<Result> {
+/**
+ * Reset por admin (B2 ADR-0020): invalidación DURA. Fija una clave ALEATORIA desconocida (la anterior deja
+ * de servir) + must_set_password + manda correo branded con enlace para que el usuario cree la suya. El
+ * admin ya no ve/entrega ninguna contraseña. service_role GATEADO.
+ */
+export async function adminResetPassword(userId: string): Promise<Result> {
   try {
     await assertCallerIsAdmin();
   } catch {
     return { ok: false, error: "Operación restringida a admin." };
   }
+  const supabase = await createSupabaseServerClient();
+  const { data: u } = await supabase.from("users").select("email, full_name").eq("id", userId).maybeSingle();
+  if (!u?.email) return { ok: false, error: "El usuario no tiene email." };
+
   const admin = createSupabaseAdminClient();
-  const { error } = await admin.auth.admin.updateUserById(userId, { password: newPassword });
-  if (error) return { ok: false, error: error.message };
+  const randomPwd = `Rc-${crypto.randomUUID()}-${crypto.randomUUID().slice(0, 8)}`;
+  const { error: ue } = await admin.auth.admin.updateUserById(userId, {
+    password: randomPwd, // invalida la anterior (nadie la conoce)
+    app_metadata: { must_set_password: true }, // fuerza el cambio al entrar
+  });
+  if (ue) return { ok: false, error: ue.message };
+
+  const origin = await requestOrigin();
+  const next = encodeURIComponent("/auth/reset?mode=update");
+  const { data: linkData, error: le } = await admin.auth.admin.generateLink({
+    type: "recovery",
+    email: u.email as string,
+    options: { redirectTo: `${origin}/auth/callback?next=${next}` },
+  });
+  if (le || !linkData?.properties?.action_link) {
+    return { ok: false, error: "Clave reseteada, pero no se pudo generar el enlace." };
+  }
+  try {
+    await sendResetEmail({
+      to: u.email as string,
+      fullName: (u.full_name as string | undefined) ?? "",
+      setPasswordLink: linkData.properties.action_link,
+    });
+  } catch (e) {
+    return { ok: false, error: `Clave reseteada, pero el correo no se envió (revisa SMTP): ${(e as Error).message}` };
+  }
   return { ok: true };
 }
 
@@ -292,7 +364,9 @@ export async function adminDeleteUser(targetUserId: string, adminPassword: strin
     password: adminPassword,
   });
   if (authErr) return { ok: false, error: "Contraseña incorrecta." };
-  await probe.auth.signOut(); // defensivo (persistSession:false ya evita persistir)
+  // ⚠ B3 (ADR-0020): scope 'local' — revoca SOLO la sesión efímera del probe. El default 'global' revocaría
+  // TODOS los refresh tokens del admin (el probe firmó como él) → lo deslogueaba. Causa del bug en prod.
+  await probe.auth.signOut({ scope: "local" });
 
   // Solo entonces: borrado destructivo con service_role. Las FKs de 0011 (ADR-0017) garantizan la
   // integridad: los datos PROPIOS (tasks/instancias/categorías personales) se borran en cascada; los

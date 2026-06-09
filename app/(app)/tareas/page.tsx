@@ -25,7 +25,7 @@ async function loadInstances(supabase: DB, date: string): Promise<DayItem[]> {
   const { data } = await supabase
     .from("task_instances")
     .select(
-      "task_id, date, status_pct, title, time_slot, duration_minutes, priority, tasks(title, time_slot, duration_minutes, priority, recurrence, weekdays, deleted_at)",
+      "task_id, date, status_pct, title, time_slot, duration_minutes, priority, tasks(title, time_slot, duration_minutes, priority, recurrence, weekdays, deleted_at, excluded_dates)",
     )
     .eq("date", date);
 
@@ -37,6 +37,7 @@ async function loadInstances(supabase: DB, date: string): Promise<DayItem[]> {
     recurrence: string | null;
     weekdays: number[] | null;
     deleted_at: string | null;
+    excluded_dates: string[] | null;
   };
   type Row = {
     task_id: string;
@@ -51,7 +52,8 @@ async function loadInstances(supabase: DB, date: string): Promise<DayItem[]> {
 
   return ((data ?? []) as unknown as Row[])
     .map((r) => ({ r, t: (Array.isArray(r.tasks) ? r.tasks[0] : r.tasks) ?? null }))
-    .filter(({ t }) => !t?.deleted_at) // filtrado de visualización (no en RLS): oculta soft-deleted
+    // filtrado de visualización (no RLS): oculta soft-deleted y los días excluidos (borrar "solo este día")
+    .filter(({ r, t }) => !t?.deleted_at && !((t?.excluded_dates ?? []) as string[]).includes(String(r.date)))
     .map(({ r, t }) => ({
       taskId: String(r.task_id),
       date: String(r.date),

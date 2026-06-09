@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { WeekdayPicker } from "@/components/tasks/weekday-picker";
-import { updateTask } from "@/lib/actions/tasks";
+import { updateTask, deleteTask } from "@/lib/actions/tasks";
 import { RECURRENCE_LABEL, type DayItem, type EditScope, type TaskRecurrence } from "@/lib/tasks/types";
 
 /**
@@ -28,6 +28,7 @@ export function RecurrenceEditDialog({
   const [title, setTitle] = useState("");
   const [recurrence, setRecurrence] = useState<TaskRecurrence>("once");
   const [weekdays, setWeekdays] = useState<number[]>([]);
+  const [confirming, setConfirming] = useState(false);
   const [pending, start] = useTransition();
 
   useEffect(() => {
@@ -46,6 +47,14 @@ export function RecurrenceEditDialog({
     if (!item) return;
     start(async () => {
       await updateTask(item.taskId, scope, item.date, { title, recurrence, weekdays });
+      onClose();
+    });
+  }
+
+  function del(scope: EditScope) {
+    if (!item) return;
+    start(async () => {
+      await deleteTask(item.taskId, scope, item.date);
       onClose();
     });
   }
@@ -112,6 +121,43 @@ export function RecurrenceEditDialog({
             <Button variant="primary" className="w-full" disabled={pending} onClick={() => save("all")}>
               Guardar
             </Button>
+          )}
+        </div>
+
+        {/* Eliminar (NOTA-1): confirmación; scope en recurrentes; "once" un solo eliminar. */}
+        <div className="mt-4 border-t border-white/40 pt-3 dark:border-white/10">
+          {!confirming ? (
+            <button
+              type="button"
+              onClick={() => setConfirming(true)}
+              className="text-xs font-medium text-red-500 transition hover:text-red-600"
+            >
+              Eliminar tarea
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs text-red-500">Esto no se puede deshacer. ¿Eliminar?</p>
+              {wasRecurring ? (
+                <>
+                  <Button variant="danger" className="w-full justify-start" disabled={pending} onClick={() => del("this_day")}>
+                    Eliminar solo este día
+                  </Button>
+                  <Button variant="danger" className="w-full justify-start" disabled={pending} onClick={() => del("this_and_following")}>
+                    Eliminar este y los siguientes
+                  </Button>
+                  <Button variant="danger" className="w-full justify-start" disabled={pending} onClick={() => del("all")}>
+                    Eliminar toda la serie
+                  </Button>
+                </>
+              ) : (
+                <Button variant="danger" className="w-full" disabled={pending} onClick={() => del("all")}>
+                  Sí, eliminar
+                </Button>
+              )}
+              <Button variant="ghost" className="w-full" disabled={pending} onClick={() => setConfirming(false)}>
+                Cancelar
+              </Button>
+            </div>
           )}
         </div>
       </GlassCard>
