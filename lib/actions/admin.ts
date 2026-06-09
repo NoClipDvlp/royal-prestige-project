@@ -216,17 +216,16 @@ export async function adminCreateUser(
   const { error: mspErr } = await admin.from("users").update({ must_set_password: true }).eq("id", created.user.id);
   if (mspErr) return { ok: false, error: `Usuario creado, pero no se pudo forzar el cambio de clave: ${mspErr.message}` };
 
-  // 3) Enlace "establece tu contraseña" (recovery → /auth/reset?mode=update). generateLink NO envía correo.
+  // 3) CÓDIGO de 6 dígitos para establecer contraseña (recovery, ADR-0023). generateLink NO envía correo;
+  //    usamos properties.email_otp (NO el action_link: un código no clicable es inmune al pre-consumo del
+  //    escáner de correo y a la ausencia de code_verifier de PKCE en links de servidor). otpUrl = URL normal.
   const origin = await requestOrigin();
-  const next = encodeURIComponent("/auth/reset?mode=update");
-  const { data: linkData, error: le } = await admin.auth.admin.generateLink({
-    type: "recovery",
-    email,
-    options: { redirectTo: `${origin}/auth/callback?next=${next}` },
-  });
-  if (le || !linkData?.properties?.action_link) {
-    return { ok: false, error: "Usuario y rol creados, pero no se pudo generar el enlace de contraseña." };
+  const otpUrl = `${origin}/auth/reset?mode=otp&email=${encodeURIComponent(email)}`;
+  const { data: linkData, error: le } = await admin.auth.admin.generateLink({ type: "recovery", email });
+  if (le || !linkData?.properties?.email_otp) {
+    return { ok: false, error: "Usuario y rol creados, pero no se pudo generar el código de acceso." };
   }
+  console.log("[ADR-0023] email_otp presente en alta:", Boolean(linkData.properties.email_otp));
 
   // 4) Nombre de distribución (para el correo) + envío del correo rico.
   let distributionName: string | null = null;
@@ -241,7 +240,8 @@ export async function adminCreateUser(
       fullName,
       role,
       distributionName,
-      setPasswordLink: linkData.properties.action_link,
+      code: linkData.properties.email_otp,
+      otpUrl,
     });
   } catch (e) {
     return { ok: false, error: `Usuario creado, pero el correo no se envió (revisa SMTP): ${(e as Error).message}` };
@@ -279,20 +279,18 @@ export async function adminResetPassword(userId: string): Promise<Result> {
   if (mspErr) return { ok: false, error: `Clave reseteada, pero no se pudo forzar el cambio: ${mspErr.message}` };
 
   const origin = await requestOrigin();
-  const next = encodeURIComponent("/auth/reset?mode=update");
-  const { data: linkData, error: le } = await admin.auth.admin.generateLink({
-    type: "recovery",
-    email: u.email as string,
-    options: { redirectTo: `${origin}/auth/callback?next=${next}` },
-  });
-  if (le || !linkData?.properties?.action_link) {
-    return { ok: false, error: "Clave reseteada, pero no se pudo generar el enlace." };
+  const otpUrl = `${origin}/auth/reset?mode=otp&email=${encodeURIComponent(u.email as string)}`;
+  const { data: linkData, error: le } = await admin.auth.admin.generateLink({ type: "recovery", email: u.email as string });
+  if (le || !linkData?.properties?.email_otp) {
+    return { ok: false, error: "Clave reseteada, pero no se pudo generar el código." };
   }
+  console.log("[ADR-0023] email_otp presente en reset:", Boolean(linkData.properties.email_otp));
   try {
     await sendResetEmail({
       to: u.email as string,
       fullName: (u.full_name as string | undefined) ?? "",
-      setPasswordLink: linkData.properties.action_link,
+      code: linkData.properties.email_otp,
+      otpUrl,
     });
   } catch (e) {
     return { ok: false, error: `Clave reseteada, pero el correo no se envió (revisa SMTP): ${(e as Error).message}` };

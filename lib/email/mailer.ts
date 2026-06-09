@@ -35,6 +35,7 @@ type Block = {
   heading: string;
   intro: string;
   rows?: [string, string][]; // tabla clave/valor
+  code?: string; // OTP de 6 dígitos (ADR-0023) — caja destacada, NO enlace clicable
   button?: { label: string; href: string };
   note?: string;
 };
@@ -57,7 +58,8 @@ function render(b: Block): { html: string; text: string } {
         <h1 style="margin:0 0 6px;font-size:20px;color:${fg}">${esc(b.heading)}</h1>
         <p style="margin:0 0 18px;font-size:14px;line-height:1.5;color:${muted}">${esc(b.intro)}</p>
         ${b.rows?.length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6fc;border-radius:12px;padding:4px">${rowsHtml}</table>` : ""}
-        ${b.button ? `<div style="text-align:center;margin:24px 0 8px"><a href="${b.button.href}" style="display:inline-block;background:${accent};color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:12px 22px;border-radius:14px">${esc(b.button.label)}</a></div>` : ""}
+        ${b.code ? `<div style="text-align:center;margin:22px 0 6px"><div style="display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:30px;font-weight:700;letter-spacing:10px;color:${fg};background:#f4f6fc;border:1px solid #e7ebf6;border-radius:14px;padding:14px 10px 14px 20px">${esc(b.code)}</div></div>` : ""}
+        ${b.button ? `<div style="text-align:center;margin:${b.code ? "10px" : "24px"} 0 8px"><a href="${b.button.href}" style="display:inline-block;background:${accent};color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:12px 22px;border-radius:14px">${esc(b.button.label)}</a></div>` : ""}
         ${b.note ? `<p style="margin:14px 0 0;font-size:12px;line-height:1.5;color:${muted}">${esc(b.note)}</p>` : ""}
       </td></tr>
       <tr><td style="padding:16px 28px;border-top:1px solid #eef1f8;font-size:11px;color:${muted}">© Pistacore · Royal Control</td></tr>
@@ -68,6 +70,7 @@ function render(b: Block): { html: string; text: string } {
     "",
     b.intro,
     ...(b.rows ?? []).map(([k, v]) => `${k}: ${v}`),
+    ...(b.code ? ["", `Tu código: ${b.code}`] : []),
     ...(b.button ? ["", `${b.button.label}: ${b.button.href}`] : []),
     ...(b.note ? ["", b.note] : []),
     "",
@@ -87,24 +90,28 @@ function roleRow(role: string, distributionName?: string | null): [string, strin
 
 // ── Correos ──────────────────────────────────────────────────────────────────
 
-/** Alta por admin (#3): datos + ROL + enlace para ESTABLECER contraseña (sin clave en texto). */
-export async function sendWelcomeEmail(o: { to: string; fullName: string; role: string; distributionName?: string | null; setPasswordLink: string }) {
+/** Alta por admin (ADR-0023): datos + ROL + CÓDIGO de 6 dígitos para establecer contraseña (código-only,
+ *  sin enlace de verificación: el escáner de correo no puede pre-consumirlo). `otpUrl` es una URL normal de
+ *  la app (sin token) para abrir la pantalla donde se teclea el código. */
+export async function sendWelcomeEmail(o: { to: string; fullName: string; role: string; distributionName?: string | null; code: string; otpUrl: string }) {
   await send(o.to, "Tu cuenta de Royal Control está lista", {
     heading: `Hola ${o.fullName},`,
-    intro: "Tu cuenta ya está lista. Estos son tus datos de acceso:",
+    intro: "Tu cuenta ya está lista. Para entrar, establece tu contraseña con este código:",
     rows: [["Usuario", o.to], roleRow(o.role, o.distributionName)],
-    button: { label: "Establece tu contraseña", href: o.setPasswordLink },
-    note: "Por seguridad, eliges tu propia contraseña con ese enlace. Si no esperabas este correo, ignóralo.",
+    code: o.code,
+    button: { label: "Establecer contraseña", href: o.otpUrl },
+    note: "Abre la pantalla, escribe el código de 6 dígitos y elige tu contraseña. El código caduca: si expira, pide uno nuevo desde “¿Olvidaste tu contraseña?”. No compartas este código.",
   });
 }
 
-/** Reset por admin (B2): enlace para fijar una NUEVA contraseña (la anterior queda invalidada). */
-export async function sendResetEmail(o: { to: string; fullName: string; setPasswordLink: string }) {
+/** Reset por admin (ADR-0023): CÓDIGO para fijar una NUEVA contraseña (la anterior queda invalidada). Código-only. */
+export async function sendResetEmail(o: { to: string; fullName: string; code: string; otpUrl: string }) {
   await send(o.to, "Restablece tu contraseña de Royal Control", {
     heading: `Hola ${o.fullName},`,
-    intro: "Un administrador restableció tu contraseña. Por seguridad, la anterior ya no es válida: crea una nueva con este enlace.",
-    button: { label: "Crear nueva contraseña", href: o.setPasswordLink },
-    note: "Si el enlace caduca, al iniciar sesión se te pedirá establecerla. Si no esperabas esto, contacta a tu administrador.",
+    intro: "Para crear una nueva contraseña, usa este código de 6 dígitos:",
+    code: o.code,
+    button: { label: "Crear nueva contraseña", href: o.otpUrl },
+    note: "Abre la pantalla, escribe el código y elige tu contraseña. El código caduca; si expira, pide uno nuevo. No compartas este código.",
   });
 }
 

@@ -3,10 +3,11 @@
 // Server actions de CUENTA (self). Usan service_role SOLO sobre el app_metadata del PROPIO usuario
 // (id de getUser() validado) — nunca cross-user. Es un gate self-scoped (no admin), bounded a user.id.
 
+import { headers } from "next/headers";
 import { getProfile, getUser } from "@/lib/auth/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { sendPasswordChangedEmail, sendPendingReviewEmail } from "@/lib/email/mailer";
+import { sendPasswordChangedEmail, sendPendingReviewEmail, sendResetEmail } from "@/lib/email/mailer";
 
 type Result = { ok: boolean; error?: string };
 
@@ -73,6 +74,31 @@ export async function notifyPendingReviewOnce(): Promise<Result> {
     await admin.auth.admin.updateUserById(user.id, { app_metadata: { review_notified: true } });
   } catch {
     /* best-effort: si falla, se reintenta en la próxima visita */
+  }
+  return { ok: true };
+}
+
+/**
+ * "Olvidé contraseña" (ADR-0023): envía un CÓDIGO de 6 dígitos (recovery) por correo branded, vía service_role
+ * (generateLink → email_otp). No usa resetPasswordForEmail → esquiva el rate-limit de 60s/usuario y no depende
+ * de plantillas de Supabase. NO revela si el email existe (siempre ok). El usuario teclea el código en
+ * /auth/reset?mode=otp → verifyOtp. Código-only: sin enlace de verificación (inmune al pre-consumo del escáner).
+ */
+export async function requestPasswordOtp(email: string): Promise<Result> {
+  const clean = email.trim().toLowerCase();
+  if (!clean) return { ok: true };
+  try {
+    const admin = createSupabaseAdminClient();
+    const { data, error } = await admin.auth.admin.generateLink({ type: "recovery", email: clean });
+    if (error || !data?.properties?.email_otp) return { ok: true }; // usuario inexistente u otro → no revelar
+    console.log("[ADR-0023] email_otp presente en forgot:", Boolean(data.properties.email_otp));
+    const h = await headers();
+    const origin = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("x-forwarded-host") ?? h.get("host") ?? ""}`;
+    const otpUrl = `${origin}/auth/reset?mode=otp&email=${encodeURIComponent(clean)}`;
+    const { data: u } = await admin.from("users").select("full_name").ilike("email", clean).maybeSingle();
+    await sendResetEmail({ to: clean, fullName: (u?.full_name as string | undefined) ?? "", code: data.properties.email_otp, otpUrl });
+  } catch {
+    /* no revelar */
   }
   return { ok: true };
 }

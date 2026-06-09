@@ -7,13 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { requestPasswordOtp } from "@/lib/actions/account";
 
 export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [resetMsg, setResetMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleLogin(e: FormEvent) {
@@ -58,12 +58,9 @@ export function LoginForm() {
       setError("Escribe tu email y vuelve a pulsar “¿Olvidaste tu contraseña?”.");
       return;
     }
-    const supabase = createSupabaseBrowserClient();
-    const next = encodeURIComponent("/auth/reset?mode=update");
-    await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=${next}`,
-    });
-    setResetMsg("Si el email existe, te enviamos un enlace para restablecer tu contraseña.");
+    // ADR-0023: enviamos un CÓDIGO (server-action branded) y llevamos a la pantalla donde se teclea.
+    await requestPasswordOtp(email);
+    router.push(`/auth/reset?mode=otp&email=${encodeURIComponent(email)}`);
   }
 
   return (
@@ -90,7 +87,6 @@ export function LoginForm() {
         />
       </Field>
       {error ? <p className="text-xs text-red-500">{error}</p> : null}
-      {resetMsg ? <p className="text-xs text-positive">{resetMsg}</p> : null}
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? "Entrando…" : "Entrar"}
       </Button>
