@@ -197,7 +197,9 @@ export async function adminDeleteUser(targetUserId: string, adminPassword: strin
   if (authErr) return { ok: false, error: "Contraseña incorrecta." };
   await probe.auth.signOut(); // defensivo (persistSession:false ya evita persistir)
 
-  // Solo entonces: borrado destructivo con service_role. CASCADE borra todo el histórico.
+  // Solo entonces: borrado destructivo con service_role. Las FKs de 0011 (ADR-0017) garantizan la
+  // integridad: los datos PROPIOS (tasks/instancias/categorías personales) se borran en cascada; los
+  // artefactos COMPARTIDOS que creó (categorías globales, plantillas, asignaciones) sobreviven con autor NULL.
   const admin = createSupabaseAdminClient();
   const { error } = await admin.auth.admin.deleteUser(targetUserId);
   if (error) return { ok: false, error: error.message };
