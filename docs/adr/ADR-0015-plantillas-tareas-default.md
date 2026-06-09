@@ -76,7 +76,9 @@ El admin confirma. Ninguna es bloqueante en v1.
 ## Qué se borró / simplificó
 
 - Propagación destructiva (overwrite de ediciones) → descartada: el distribuidor es autónomo.
-- Añadir/quitar items en la propagación → fase 2.
+- ~~Añadir/quitar items en la propagación → fase 2.~~ **REVERTIDO por ADR-0018**: propagar ahora también
+  SIEMBRA los items nuevos en los asignados activos (INSERT idempotente por `(owner, template_item_id)`).
+  "Solo futuras" sigue sin sembrar. (Quitar items sigue siendo gestión libre vía hard-delete del item.)
 - Propagación granular "elige a cuáles distribuidores" → binario v1.
 - Vínculo vivo forzado → la plantilla añade y suelta; la propagación es opt-in y no-destructiva.
 - Auditor leyendo plantillas → fuera de v1.
