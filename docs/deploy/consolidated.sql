@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Royal Control — SQL CONSOLIDADO DE DEPLOY (GENERADO — IDEMPOTENTE, re-ejecutable)
--- Fuente: migraciones + RLS del repo. Orden: 0000 → policies → 0001 → 0002 → 0003 → 0004 → 0005 → 0006 → 0008 → 0009 → 0010 → 0011 → 0012 → 0013 → 0014 → 0015 → 0016.
+-- Fuente: migraciones + RLS del repo. Orden: 0000 → policies → 0001 → 0002 → 0003 → 0004 → 0005 → 0006 → 0008 → 0009 → 0010 → 0011 → 0012 → 0013 → 0014 → 0015 → 0016 → 0017.
 -- ⚠ Re-ejecutable sin importar el estado (corre 2 veces sin error): create ... if not exists,
 --    do-guards de enums, create or replace trigger/view/function, drop policy if exists + create,
 --    add column if not exists, drop constraint if exists + add. NO cambia el diseño (DEBT-0011).
@@ -1812,3 +1812,15 @@ end $$;
 
 revoke execute on function public.set_task_status(uuid, date, smallint) from public;
 grant execute on function public.set_task_status(uuid, date, smallint) to authenticated;
+
+-- =====================================================================
+-- >>> db/migrations/0017_revoke_materialize_day.sql
+-- =====================================================================
+-- 0017_revoke_materialize_day.sql — ADR-0026 (SEGURIDAD): cerrar el EXECUTE público de materialize_day.
+--
+-- public.materialize_day(date) es SECURITY DEFINER (0003) y quedó con el ACL por defecto = EXECUTE a PUBLIC
+-- → cualquier rol `authenticated` podía invocarla por RPC y sembrar task_instances de TODA la organización
+-- (cross-tenant) y degradar el KPI ajeno (instancias status_pct=0 en días pasados). Ningún server action la
+-- usa. La materialización diaria la ejecuta el cron como OWNER (no necesita el grant público).
+
+revoke execute on function public.materialize_day(date) from public, authenticated;
