@@ -75,14 +75,13 @@ export async function createTask(input: CreateInput): Promise<ActionResult> {
 
 export async function setStatus(taskId: string, date: string, pct: StatusPct): Promise<ActionResult> {
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase
-    .from("task_instances")
-    .update({ status_pct: pct, completed_at: pct === 100 ? new Date().toISOString() : null })
-    .eq("task_id", taskId)
-    .eq("date", date); // RLS: solo la propia instancia
+  // ADR-0025: materialize-on-demand. La función DEFINER crea la instancia si falta y fija el estado de
+  // forma atómica, con gate de propiedad en la DB → CUALQUIER tarea/día es calificable (no solo las que ya
+  // tienen instancia). Reemplaza el UPDATE que fallaba en días futuros / huecos del cron.
+  const { error } = await supabase.rpc("set_task_status", { p_task_id: taskId, p_date: date, p_pct: pct });
   if (error) return { ok: false, error: error.message };
-  // Sin revalidatePath: el cliente reconcilia con router.refresh() de la ruta actual (optimista, Tanda 1).
-  // La otra ruta (home/tareas) refleja el cambio en su próxima navegación (pages dinámicas).
+  // Sin revalidatePath: el cliente reconcilia con router.refresh() (optimista). La otra ruta refleja en su
+  // próxima navegación (pages dinámicas).
   return { ok: true };
 }
 

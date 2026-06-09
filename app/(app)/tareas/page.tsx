@@ -72,9 +72,16 @@ async function loadInstances(supabase: DB, date: string): Promise<DayItem[]> {
     }));
 }
 
-/** Futuro: proyección read-only vía RPC tasks_due_on (SECURITY INVOKER, respeta RLS self; ADR-0011). */
+/** Futuro: proyección vía RPC tasks_due_on (SECURITY INVOKER, RLS self; ADR-0011) + overlay del estado de
+ *  instancias YA materializadas ese día (ADR-0025: marcar a futuro crea la instancia → debe reflejarse). */
 async function loadProjection(supabase: DB, date: string): Promise<DayItem[]> {
-  const { data } = await supabase.rpc("tasks_due_on", { d: date });
+  const [{ data }, { data: ins }] = await Promise.all([
+    supabase.rpc("tasks_due_on", { d: date }),
+    supabase.from("task_instances").select("task_id, status_pct").eq("date", date),
+  ]);
+  const statusByTask = new Map(
+    ((ins ?? []) as { task_id: string; status_pct: number | null }[]).map((r) => [String(r.task_id), (r.status_pct ?? 0) as StatusPct]),
+  );
 
   type TaskRow = {
     id: string;
@@ -95,7 +102,7 @@ async function loadProjection(supabase: DB, date: string): Promise<DayItem[]> {
     priority: (t.priority ?? "medium") as TaskPriority,
     recurrence: (t.recurrence ?? "once") as TaskRecurrence,
     weekdays: t.weekdays ?? null,
-    status: 0 as StatusPct, // el futuro no tiene instancia materializada → sin estado
+    status: statusByTask.get(String(t.id)) ?? (0 as StatusPct), // ADR-0025: refleja lo marcado a futuro
   }));
 }
 
@@ -126,7 +133,8 @@ async function TareasData({
           <CheckCircle2 size={16} /> Estás al día. {items.length === 0 ? "No tienes tareas para hoy." : "Completaste todo lo de hoy."}
         </div>
       )}
-      <TareasBoard items={items} date={date} canMarkStatus={hasInstances} categories={categories} />
+      {/* ADR-0025: CUALQUIER tarea/día es calificable (set_task_status materializa on-demand). */}
+      <TareasBoard items={items} date={date} canMarkStatus categories={categories} />
     </>
   );
 }
