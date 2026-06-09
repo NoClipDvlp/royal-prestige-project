@@ -36,4 +36,13 @@ export const serverEnv = {
   smtpPass: () => required("SMTP_PASS", process.env.SMTP_PASS),
   smtpFrom: () =>
     process.env.SMTP_FROM ?? `Pistacore <${required("SMTP_USER", process.env.SMTP_USER)}>`,
+
+  // ── Correo MASIVO (MS, ADR-0027) — server-only, AISLADO del SMTP de auth (subdominio + Resend). ──
+  // Contrato: Nicolas configura MS_MAIL_API_KEY (Resend) + DNS del subdominio. El From va por @mail.pistacore.com
+  // y el Reply-To al alias (ADR-0027 §0/Q1). La API key es obligatoria (no se hardcodea credencial); From/Reply-To
+  // tienen default a las direcciones acordadas y son overridable por env.
+  msMailApiKey: () => required("MS_MAIL_API_KEY", process.env.MS_MAIL_API_KEY),
+  msMailFrom: () =>
+    process.env.MS_MAIL_FROM ?? "Pistacore Reclutamiento <home-ms-recruitments@mail.pistacore.com>",
+  msMailReplyTo: () => process.env.MS_MAIL_REPLY_TO ?? "home-ms-recruitments@pistacore.com",
 };

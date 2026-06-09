@@ -8,8 +8,8 @@ import { GlassCard } from "@/components/ui/card";
 const SECTIONS = [
   { href: "/ms/plantillas", title: "Plantillas", desc: "Correos reutilizables con campos {merge}.", icon: FileText, ready: true },
   { href: "/ms/destinatarios", title: "Destinatarios", desc: "Importa y gestiona listas (CSV).", icon: Users, ready: true },
-  { href: "/ms/lotes", title: "Lotes", desc: "Arma, programa y envía campañas.", icon: Send, ready: false },
-  { href: "/ms/logs", title: "Registro de envíos", desc: "Resultado por destinatario.", icon: ScrollText, ready: false },
+  { href: "/ms/lotes", title: "Lotes", desc: "Arma, programa y envía campañas.", icon: Send, ready: true },
+  { href: "/ms/logs", title: "Registro de envíos", desc: "Resultado por destinatario.", icon: ScrollText, ready: true },
 ] as const;
 
 export default function MsHome() {
