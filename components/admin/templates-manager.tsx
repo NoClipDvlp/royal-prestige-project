@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, type FormEvent } from "react";
-import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { Pencil, Plus, Trash2, X, Copy } from "lucide-react";
 import { useDensity } from "@/components/ui/density";
 import { GlassCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import {
   createTemplate,
   createTemplateItem,
   deleteTemplateItem,
+  duplicateTemplate,
   propagateTemplate,
   softDeleteTemplate,
   updateTemplate,
@@ -134,6 +135,13 @@ function TemplateCard({ template, categories }: { template: AdminTemplate; categ
       if (!r.ok) setErr(r.error ?? "Error");
     });
   }
+  function duplicate() {
+    setErr(null);
+    start(async () => {
+      const r = await duplicateTemplate(template.id);
+      if (!r.ok) setErr(r.error ?? "Error");
+    });
+  }
   function propagate() {
     setErr(null);
     setPropMsg(null);
@@ -169,6 +177,9 @@ function TemplateCard({ template, categories }: { template: AdminTemplate; categ
           <div className="flex shrink-0 items-center gap-1">
             <button type="button" onClick={() => setEditing(true)} aria-label="Editar plantilla" className="text-muted transition hover:text-fg">
               <Pencil size={15} />
+            </button>
+            <button type="button" onClick={duplicate} disabled={pending} aria-label="Duplicar plantilla" className="text-muted transition hover:text-fg">
+              <Copy size={15} />
             </button>
             <button type="button" onClick={remove} aria-label="Borrar plantilla" className="text-muted transition hover:text-red-500">
               <Trash2 size={15} />

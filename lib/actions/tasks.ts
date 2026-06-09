@@ -86,6 +86,36 @@ export async function setStatus(taskId: string, date: string, pct: StatusPct): P
   return { ok: true };
 }
 
+/** Duplica una tarea con su forma (título "… (copia)"). RLS: el distribuidor sobre las SUYAS (owner=self);
+ *  el admin sobre cualquiera (tasks_insert permite admin). El trigger materializa hoy si aplica. */
+export async function duplicateTask(taskId: string): Promise<ActionResult> {
+  const supabase = await createSupabaseServerClient();
+  const { data: t } = await supabase
+    .from("tasks")
+    .select("owner_user_id, distribution_id, title, start_date, recurrence, recurrence_until, time_slot, duration_minutes, priority, category_id, weekdays")
+    .eq("id", taskId)
+    .maybeSingle();
+  if (!t) return { ok: false, error: "Tarea no encontrada." };
+
+  const { error } = await supabase.from("tasks").insert({
+    owner_user_id: t.owner_user_id, // RLS: owner=self (distribuidor) o admin
+    distribution_id: t.distribution_id,
+    title: `${(t.title as string) ?? ""} (copia)`,
+    start_date: t.start_date,
+    recurrence: t.recurrence,
+    recurrence_until: t.recurrence_until,
+    time_slot: t.time_slot,
+    duration_minutes: t.duration_minutes,
+    priority: t.priority,
+    category_id: t.category_id,
+    weekdays: t.weekdays,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/tareas");
+  revalidatePath("/");
+  return { ok: true };
+}
+
 export async function softDeleteTask(taskId: string): Promise<ActionResult> {
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase

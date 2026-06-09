@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { X } from "lucide-react";
+import { X, Copy } from "lucide-react";
 import { ModalCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { WeekdayPicker } from "@/components/tasks/weekday-picker";
-import { updateTask, deleteTask } from "@/lib/actions/tasks";
+import { updateTask, deleteTask, duplicateTask } from "@/lib/actions/tasks";
 import { RECURRENCE_LABEL, type DayItem, type EditScope, type TaskRecurrence } from "@/lib/tasks/types";
 
 /**
@@ -62,6 +62,14 @@ export function RecurrenceEditDialog({
     if (!item) return;
     start(async () => {
       await deleteTask(item.taskId, scope, item.date);
+      onClose();
+    });
+  }
+
+  function dup() {
+    if (!item) return;
+    start(async () => {
+      await duplicateTask(item.taskId);
       onClose();
     });
   }
@@ -151,6 +159,12 @@ export function RecurrenceEditDialog({
               Guardar
             </Button>
           )}
+        </div>
+
+        <div className="mt-3">
+          <Button variant="glass" className="w-full justify-center gap-1.5" disabled={pending} onClick={dup}>
+            <Copy size={14} /> Duplicar tarea
+          </Button>
         </div>
 
         {/* Eliminar (NOTA-1): confirmación; scope en recurrentes; "once" un solo eliminar. */}

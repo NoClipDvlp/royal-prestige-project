@@ -127,8 +127,51 @@ export async function deleteTemplateItem(id: string): Promise<Result> {
   const denied = await requireAdmin();
   if (denied) return denied;
   const supabase = await createSupabaseServerClient();
+  // Simetría de la siembra (ADR-0018): al quitar el ítem, RETIRA (soft-delete) las tareas que sembró y que el
+  // distribuidor NO editó (customized_at IS NULL). Las customizadas se RESPETAN (son suyas). ANTES del
+  // hard-delete: el FK ON DELETE SET NULL desvincularía template_item_id si borráramos el ítem primero.
+  const { error: de } = await supabase
+    .from("tasks")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("template_item_id", id)
+    .is("customized_at", null)
+    .is("deleted_at", null);
+  if (de) return { ok: false, error: de.message };
   const { error } = await supabase.from("template_items").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+/** Duplica una plantilla COMPLETA (cabecera + todos sus ítems) con nombre "… (copia)". Admin. */
+export async function duplicateTemplate(id: string): Promise<Result> {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "No autenticado." };
+
+  const { data: tpl } = await supabase.from("task_templates").select("name, description").eq("id", id).is("deleted_at", null).maybeSingle();
+  if (!tpl) return { ok: false, error: "Plantilla no encontrada." };
+
+  const { data: created, error: ce } = await supabase
+    .from("task_templates")
+    .insert({ name: `${tpl.name as string} (copia)`, description: (tpl.description as string | null) ?? null, created_by: user.id })
+    .select("id")
+    .single();
+  if (ce || !created) return { ok: false, error: ce?.message ?? "No se pudo duplicar la plantilla." };
+
+  const { data: items } = await supabase
+    .from("template_items")
+    .select("title, category_id, priority, recurrence, time_slot, duration_minutes, weekdays, emoji")
+    .eq("template_id", id);
+  if (items && items.length > 0) {
+    const rows = (items as Record<string, unknown>[]).map((it) => ({ ...it, template_id: created.id as string }));
+    const { error: ie } = await supabase.from("template_items").insert(rows);
+    if (ie) return { ok: false, error: ie.message };
+  }
   revalidatePath("/admin");
   return { ok: true };
 }
