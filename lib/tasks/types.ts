@@ -12,6 +12,7 @@ export type DayItem = {
   durationMinutes: number | null; // null = "punto" en la franja (sin bloque); ADR-0011
   priority: TaskPriority;
   recurrence: TaskRecurrence;
+  weekdays?: number[] | null; // ADR-0019: días de la weekly (para pre-rellenar el editor de recurrencia)
   status: StatusPct;
 };
 
