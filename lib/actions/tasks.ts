@@ -6,6 +6,8 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth/server";
+import { bogotaToday } from "@/lib/dashboard/week";
+import { addDays } from "@/lib/tasks/dates";
 import type { EditScope, StatusPct, TaskPriority, TaskRecurrence } from "@/lib/tasks/types";
 
 type ActionResult = { ok: boolean; error?: string };
@@ -92,6 +94,49 @@ export async function softDeleteTask(taskId: string): Promise<ActionResult> {
     .eq("id", taskId); // RLS: tasks_update self (hard-delete es admin-only)
   if (error) return { ok: false, error: error.message };
   revalidatePath("/tareas");
+  return { ok: true };
+}
+
+/**
+ * Eliminar tarea (NOTA-1 ADR-0020), con scope. El distribuidor NO puede borrar task_instances (ti_delete es
+ * admin-only), así que se usan herramientas que SÍ permite la RLS self (UPDATE de tasks):
+ *  - all: soft-delete (deleted_at) → el loader oculta toda la serie.
+ *  - this_day: añade la fecha a excluded_dates → el loader la oculta y la proyección la salta.
+ *  - this_and_following: corta la serie (recurrence_until = date-1) + excluye los días YA materializados
+ *    [date..hoy] (no se pueden borrar sus instances). El KPI excluye borradas/excluidas vía ADR-0021.
+ */
+export async function deleteTask(taskId: string, scope: EditScope, date: string): Promise<ActionResult> {
+  const supabase = await createSupabaseServerClient();
+
+  if (scope === "all") {
+    const { error } = await supabase
+      .from("tasks")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", taskId);
+    if (error) return { ok: false, error: error.message };
+  } else if (scope === "this_day") {
+    const { data: t } = await supabase.from("tasks").select("excluded_dates").eq("id", taskId).maybeSingle();
+    if (!t) return { ok: false, error: "Tarea no encontrada." };
+    const excluded = Array.from(new Set([...(((t.excluded_dates as string[]) ?? [])), date]));
+    const { error } = await supabase.from("tasks").update({ excluded_dates: excluded }).eq("id", taskId);
+    if (error) return { ok: false, error: error.message };
+  } else {
+    // this_and_following
+    const { data: t } = await supabase.from("tasks").select("excluded_dates").eq("id", taskId).maybeSingle();
+    if (!t) return { ok: false, error: "Tarea no encontrada." };
+    const today = bogotaToday();
+    const range: string[] = [];
+    for (let d = date; d <= today; d = addDays(d, 1)) range.push(d); // días ya materializados a ocultar
+    const excluded = Array.from(new Set([...(((t.excluded_dates as string[]) ?? [])), ...range]));
+    const { error } = await supabase
+      .from("tasks")
+      .update({ recurrence_until: minusOneDay(date), excluded_dates: excluded })
+      .eq("id", taskId);
+    if (error) return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/tareas");
+  revalidatePath("/");
   return { ok: true };
 }
 
