@@ -21,12 +21,25 @@ export function LoginForm() {
     setError(null);
     setLoading(true);
     const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
+      setLoading(false);
       setError("Email o contraseña incorrectos.");
       return;
     }
+    // ERROR 2 (ADR-0022): el ADMIN es SINGLE-SESSION. Tras login, si el rol es admin, cierra las DEMÁS
+    // sesiones (otros dispositivos/navegadores) conservando esta. Auditor/distribuidor son multidevice → no
+    // se tocan. (RLS self: solo lee su propia fila.) Best-effort: un fallo aquí no debe impedir entrar.
+    try {
+      const uid = data.user?.id;
+      if (uid) {
+        const { data: prof } = await supabase.from("users").select("role").eq("id", uid).maybeSingle();
+        if (prof?.role === "admin") await supabase.auth.signOut({ scope: "others" });
+      }
+    } catch {
+      /* best-effort */
+    }
+    setLoading(false);
     router.replace("/");
     router.refresh();
   }
