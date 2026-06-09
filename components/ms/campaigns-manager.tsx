@@ -349,7 +349,10 @@ function ScheduleModal({ campaignId, onClose, onSaved }: { campaignId: string; o
           <span className="px-1 text-[11px] text-muted">Fecha y hora</span>
           <Input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
         </label>
-        <p className="mt-2 text-[11px] text-muted">Se enviará cuando entres a Lotes después de esa hora (dispatch al estar activo).</p>
+        <p className="mt-2 text-[11px] text-muted">
+          Se enviará <strong>al abrir Lotes después de la hora programada</strong>. No es envío desatendido
+          (que llegará en v2): si nadie abre la sección tras esa hora, el lote espera.
+        </p>
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
           <Button disabled={pending || !when} onClick={save}>Programar</Button>
