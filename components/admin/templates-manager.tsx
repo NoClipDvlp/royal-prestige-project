@@ -29,7 +29,7 @@ import {
   updateTemplateItem,
   type TemplateItemInput,
 } from "@/lib/actions/templates";
-import { Users } from "lucide-react";
+import { Users, Printer } from "lucide-react";
 
 export type CatOption = { id: string; name: string };
 export type AdminTemplateItem = {
@@ -207,6 +207,16 @@ function TemplateCard({ template, categories }: { template: AdminTemplate; categ
             <Users size={14} /> Aplicar a asignados
           </button>
         )}
+        {template.items.length > 0 && (
+          <a
+            href={`/plantillas/imprimir?id=${template.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs font-medium text-accent transition hover:brightness-110"
+          >
+            <Printer size={14} /> Imprimir cronograma
+          </a>
+        )}
       </div>
 
       {adding && (
@@ -324,7 +334,8 @@ function ItemForm({
       recurrence,
       timeSlot: hour != null ? `${String(hour).padStart(2, "0")}:00` : null,
       durationMinutes: duration,
-      weekdays: recurrence === "weekly" ? weekdays : null, // ADR-0019
+      // weekly: días de recurrencia; once: día puntual para el cronograma de plantilla (print). Resto: sin día.
+      weekdays: recurrence === "weekly" || recurrence === "once" ? weekdays : null,
     };
     start(async () => {
       const r = item ? await updateTemplateItem(item.id, payload) : await createTemplateItem(templateId as string, payload);
@@ -370,10 +381,17 @@ function ItemForm({
             ))}
           </Select>
         </div>
-        {recurrence === "weekly" && (
+        {(recurrence === "weekly" || recurrence === "once") && (
           <div className="flex flex-col gap-1">
-            <span className="px-1 text-[11px] text-muted">Días de la semana</span>
+            <span className="px-1 text-[11px] text-muted">
+              {recurrence === "weekly" ? "Días de la semana" : "Día (para el cronograma de la semana)"}
+            </span>
             <WeekdayPicker value={weekdays} onChange={setWeekdays} />
+            {recurrence === "once" ? (
+              <span className="px-1 text-[10px] text-muted/80">
+                Una sola vez, ese día de la semana impresa. No recurre ni genera tareas repetidas.
+              </span>
+            ) : null}
           </div>
         )}
         {err ? <p className="text-xs text-red-500">{err}</p> : null}

@@ -53,6 +53,8 @@ const PRINT_CSS = `
   .rc-foot .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
   .rc-foot .okk{color:var(--ok);font-weight:800}
   .rc-empty{flex:1;display:flex;align-items:center;justify-content:center;color:#aab0bd;font-size:15px;font-style:italic}
+  .rc-note{margin:8px 0 0;font-size:10.5px;color:var(--muted)}
+  .rc-note b{color:var(--fg);font-weight:700}
   @page{size:letter landscape;margin:12mm}
   @media print{
     body{background:#fff}
@@ -84,12 +86,14 @@ export function PrintSchedule({
   title,
   rangeLabel,
   printedLabel,
+  footnote,
 }: {
   matrix: WeekMatrix;
   dayNumbers: number[]; // 7 (lun…dom)
   title: string; // "Cronograma semanal"
   rangeLabel: string; // "Semana del 8 al 14 de junio de 2026 · María González · Distribución Suaterna"
   printedLabel: string; // "Impreso el 9 de junio de 2026 · Royal Control · Pistacore"
+  footnote?: string | null; // p.ej. ítems "sin día asignado" del cronograma de plantilla
 }) {
   return (
     <div className="rc-print">
@@ -142,6 +146,8 @@ export function PrintSchedule({
         ) : (
           <div className="rc-empty">Sin tareas esta semana</div>
         )}
+
+        {footnote ? <p className="rc-note"><b>Sin día asignado:</b> {footnote}</p> : null}
 
         <footer className="rc-foot">
           <div className="legend">

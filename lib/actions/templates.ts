@@ -24,9 +24,10 @@ export type TemplateItemInput = {
   weekdays?: number[] | null; // ADR-0019: días isodow 1=lun…7=dom; solo weekly
 };
 
-/** weekdays solo para weekly con al menos un día; el resto → null. */
+/** weekdays para weekly (multi-día, recurrencia) y para once (día puntual en el cronograma de plantilla,
+ *  print-only — NO altera el motor: una once materializa por su start_date, ignora weekdays). El resto → null. */
 function tplWeekdays(recurrence: TaskRecurrence, weekdays?: number[] | null): number[] | null {
-  if (recurrence !== "weekly") return null;
+  if (recurrence !== "weekly" && recurrence !== "once") return null;
   return weekdays && weekdays.length > 0 ? weekdays : null;
 }
 
