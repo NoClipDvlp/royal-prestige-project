@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { X, Plus } from "lucide-react";
-import { GlassCard } from "@/components/ui/card";
+import { ModalCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -99,7 +99,7 @@ export function TaskCreateModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <GlassCard className="w-full max-w-md p-6">
+      <ModalCard className="w-full max-w-md p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-fg">Nueva tarea</h2>
           <button type="button" onClick={onClose} aria-label="Cerrar" className="text-muted transition hover:text-fg">
@@ -210,7 +210,7 @@ export function TaskCreateModal({
             </Button>
           </div>
         </form>
-      </GlassCard>
+      </ModalCard>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { X, AlertTriangle } from "lucide-react";
-import { GlassCard } from "@/components/ui/card";
+import { ModalCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { adminDeleteUser } from "@/lib/actions/admin";
@@ -35,7 +35,7 @@ export function DeleteUserDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
-      <GlassCard className="w-full max-w-sm p-6">
+      <ModalCard className="w-full max-w-sm p-6">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-red-500">
             <AlertTriangle size={16} /> Eliminar usuario
@@ -77,7 +77,7 @@ export function DeleteUserDialog({
             Eliminar definitivamente
           </Button>
         </div>
-      </GlassCard>
+      </ModalCard>
     </div>
   );
 }

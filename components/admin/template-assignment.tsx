@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
-import { GlassCard } from "@/components/ui/card";
+import { GlassCard, ModalCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import {
@@ -275,7 +275,7 @@ function ConfirmModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
       onPointerDown={(e) => e.target === e.currentTarget && onCancel()}
     >
-      <GlassCard className="w-full max-w-md p-6">
+      <ModalCard className="w-full max-w-md p-6">
         <h2 className="mb-3 text-sm font-semibold text-fg">Confirmar cambios</h2>
         <div className="flex max-h-72 flex-col gap-2 overflow-y-auto">
           {confirm.assign.map(({ t, u }) => (
@@ -301,7 +301,7 @@ function ConfirmModal({
           <Button variant="ghost" onClick={onCancel} disabled={pending}>Cancelar</Button>
           <Button onClick={onApply} disabled={pending}>Confirmar</Button>
         </div>
-      </GlassCard>
+      </ModalCard>
     </div>
   );
 }

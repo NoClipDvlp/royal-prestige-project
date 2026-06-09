@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { X } from "lucide-react";
-import { GlassCard } from "@/components/ui/card";
+import { ModalCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -61,7 +61,7 @@ export function RecurrenceEditDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
-      <GlassCard className="w-full max-w-sm p-6">
+      <ModalCard className="w-full max-w-sm p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-fg">Editar tarea</h2>
           <button type="button" onClick={onClose} aria-label="Cerrar" className="text-muted transition hover:text-fg">
@@ -160,7 +160,7 @@ export function RecurrenceEditDialog({
             </div>
           )}
         </div>
-      </GlassCard>
+      </ModalCard>
     </div>
   );
 }
