@@ -10,8 +10,9 @@ import type { DayItem } from "@/lib/tasks/types";
 const DOW = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const PRIO_CLASS: Record<string, string> = { high: "hi", medium: "me", low: "lo" };
 const GUTTER = 46; // ancho del carril de horas (px)
-const USABLE = 600; // alto objetivo del timeline (px) para llenar una página landscape
-const MIN_BLOCK = 30; // alto mínimo legible de un bloque (px)
+const USABLE = 620; // alto objetivo del timeline (px) para llenar una página landscape
+const MIN_BLOCK = 34; // alto mínimo legible de un bloque (px)
+const PX_PER_HOUR_MAX = 150; // tope; ventanas cortas → bloques altos (más espacio para el texto)
 
 const PRINT_CSS = `
   *{box-sizing:border-box}
@@ -42,12 +43,11 @@ const PRINT_CSS = `
   .cal-cols{position:absolute;inset:0;display:flex}
   .cal-col{position:relative;flex:1;border-left:1px solid var(--line)}
   .cal-col.we{background:#fafbfe}
-  .ev{position:absolute;overflow:hidden;display:flex;gap:3px;border:1px solid var(--line);border-left-width:3px;border-radius:5px;background:#fff;padding:2px 3px}
+  .ev{position:absolute;overflow:hidden;border:1px solid var(--line);border-left-width:3px;border-radius:5px;background:#fff;padding:3px 4px}
   .ev.hi{border-left-color:var(--hi)} .ev.me{border-left-color:var(--me)} .ev.lo{border-left-color:var(--lo)}
-  .ev .ebox{flex:none;width:15px;height:15px;border:1px dashed #b9c0cc;border-radius:4px}
-  .ev .ebody{min-width:0;flex:1}
-  .ev .et{font-size:8px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;line-height:1.15;white-space:nowrap}
-  .ev .en{font-size:9.5px;line-height:1.15;color:var(--fg)}
+  .ev .ebody{min-width:0}
+  .ev .et{font-size:8px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;line-height:1.2;white-space:nowrap}
+  .ev .en{font-size:9.5px;line-height:1.2;color:var(--fg);overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;word-break:break-word}
   .ev.hi .en{font-weight:700}
   .ev .eok{position:absolute;top:2px;right:3px;color:var(--ok);font-weight:800;font-size:9px;line-height:1}
   .ev.done .en{color:var(--muted)}
@@ -55,17 +55,15 @@ const PRINT_CSS = `
   .cal-sin{display:flex;margin-top:8px;border-top:2px solid var(--line);padding-top:5px}
   .cal-sin .lbl{flex:none;font-size:10px;font-weight:700;color:var(--fg);padding-right:8px;text-align:right}
   .cal-sin .scol{flex:1;display:flex;flex-direction:column;gap:3px;padding:0 2px}
-  .cal-sin .si{display:flex;gap:3px;align-items:center;border:1px solid var(--line);border-left-width:3px;border-radius:5px;padding:2px 3px}
+  .cal-sin .si{border:1px solid var(--line);border-left-width:3px;border-radius:5px;padding:2px 4px}
   .cal-sin .si.hi{border-left-color:var(--hi)} .cal-sin .si.me{border-left-color:var(--me)} .cal-sin .si.lo{border-left-color:var(--lo)}
-  .cal-sin .si .ebox{flex:none;width:13px;height:13px;border:1px dashed #b9c0cc;border-radius:4px}
-  .cal-sin .si .en{font-size:9px;line-height:1.1;color:var(--fg);min-width:0}
+  .cal-sin .si .en{font-size:9px;line-height:1.15;color:var(--fg)}
   .rc-empty{padding:60px 0;text-align:center;color:#aab0bd;font-size:15px;font-style:italic}
   .rc-note{margin:8px 0 0;font-size:10.5px;color:var(--muted)}
   .rc-note b{color:var(--fg);font-weight:700}
   .rc-foot{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:1px solid var(--line);font-size:10px;color:var(--muted)}
   .rc-foot .legend{display:flex;gap:13px;align-items:center;flex-wrap:wrap}
   .rc-foot .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
-  .rc-foot .legend .box{display:inline-block;width:10px;height:10px;border:1px dashed #b9c0cc;border-radius:3px;margin-right:4px;vertical-align:-1px}
   .rc-foot .okk{color:var(--ok);font-weight:800}
   @page{size:letter landscape;margin:12mm}
   @media print{
@@ -93,7 +91,6 @@ function Event({ b, pxPerHour, startMin }: { b: PrintBlock; pxPerHour: number; s
         width: `calc(${widthPct}% - 4px)`,
       }}
     >
-      <span className="ebox" aria-hidden /> {/* espacio en blanco para el emoji a mano */}
       <div className="ebody">
         <div className="et">{label}</div>
         <div className="en">{it.title}</div>
@@ -122,7 +119,7 @@ export function PrintSchedule({
   const startHour = win?.startHour ?? 8;
   const endHour = win?.endHour ?? 18;
   const windowHours = Math.max(1, endHour - startHour);
-  const pxPerHour = Math.max(40, Math.min(120, USABLE / windowHours));
+  const pxPerHour = Math.max(40, Math.min(PX_PER_HOUR_MAX, USABLE / windowHours));
   const gridH = windowHours * pxPerHour;
   const startMin = startHour * 60;
   const hours = Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i);
@@ -192,7 +189,6 @@ export function PrintSchedule({
                   <div key={i} className="scol">
                     {items.map((it) => (
                       <div key={it.taskId} className={`si ${PRIO_CLASS[it.priority] ?? "me"}`}>
-                        <span className="ebox" aria-hidden />
                         <span className="en">{it.title}</span>
                       </div>
                     ))}
@@ -213,7 +209,6 @@ export function PrintSchedule({
             <span><i style={{ background: "#d98a2b" }} />Media</span>
             <span><i style={{ background: "#9aa0ad" }} />Baja</span>
             <span><span className="okk">✓</span> Completada</span>
-            <span><span className="box" /> Tu emoji</span>
           </div>
           <div>{printedLabel}</div>
         </footer>
