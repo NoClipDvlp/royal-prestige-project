@@ -31,14 +31,3 @@ export const PRIORITY_LABEL: Record<TaskPriority, string> = {
 };
 
 /** Opciones de duración para el alta (null = punto, sin bloque). Visual/organizativo (ADR-0011 §1). */
-export const DURATION_OPTIONS: { value: number | null; label: string }[] = [
-  { value: null, label: "Sin duración (punto)" },
-  { value: 15, label: "15 min" },
-  { value: 30, label: "30 min" },
-  { value: 45, label: "45 min" },
-  { value: 60, label: "1 h" },
-  { value: 90, label: "1 h 30" },
-  { value: 120, label: "2 h" },
-  { value: 180, label: "3 h" },
-  { value: 240, label: "4 h" },
-];
