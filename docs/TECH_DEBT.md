@@ -7,8 +7,8 @@
 >
 > ✅ **Validado en Supabase real (E2E parcial, 2026-06-03):** el trigger `handle_new_user`, la RLS self,
 > el `middleware` (getUser), el signup y las tareas reales (alta + estado + edición de recurrentes)
-> funcionan end-to-end. Lo pendiente para el E2E completo es **config/infra** (DEBT-0008/0009) y una
-> mejora de core (DEBT-0010), no lógica de producto.
+> funcionan end-to-end. Lo pendiente para el E2E completo es **config/infra** (DEBT-0006 deploy + SMTP/
+> OAuth, DEBT-0009), no lógica de producto. (DEBT-0008 SMTP/email cerrada por el flujo de alta con enlace.)
 
 ---
 
@@ -204,7 +204,11 @@ Post-MVP salvo que se observe inconsistencia.
 
 ## DEBT-0008 — SMTP propio pendiente (confirmación de email + reset de contraseña)
 
-- **Estado:** abierta
+- **Estado:** ✅ CERRADA (2026-06-09) — el flujo de email quedó implementado: el alta de usuario (#3) envía
+  un **correo con enlace** para fijar contraseña (sin credencial en texto plano), vía `nodemailer` +
+  Workspace SMTP (`lib/email/mailer.ts`), y el **custom SMTP de Supabase** (recovery #2) está documentado en
+  `docs/DEPLOY.md §5/§6`. La **configuración** de las credenciales SMTP es paso de deploy (DEBT-0006).
+  Sustituye el workaround de contraseña temporal en texto (eliminado en `adminCreateUser`).
 - **Fecha de registro:** 2026-06-03
 - **Decisor (asumir como deuda):** Nicolas (humano)
 - **Registró:** Orquestador (Claude Cowork)
@@ -326,3 +330,61 @@ archivos en `run.sh`, o (c) un savepoint por archivo. Con eso, ningún test depe
 
 ### Trazabilidad
 - Relaciona: `db/tests/run.sh`, `db/tests/26_bi.sql`, `db/tests/25_metrics.sql`, `ADR-0013`
+
+---
+
+## DEBT-0013 — `nodemailer` con avisos de seguridad abiertos sin versión parcheada
+
+- **Estado:** abierta (riesgo bajo en el uso actual)
+- **Fecha de registro:** 2026-06-09
+- **Decisor (asumir como deuda):** Nicolas (humano)
+- **Registró:** Agente (Claude Code), confirmado por Orquestador
+- **Severidad global:** baja (en nuestro uso) — los CVEs requieren input controlado por el atacante; aquí no lo hay.
+
+### Contexto
+El correo de alta (#3, ADR auth/cuenta) usa `nodemailer` (`lib/email/mailer.ts`). La versión instalada
+(≤ 8.0.4) tiene avisos de seguridad **abiertos sin parche disponible**: SMTP command injection vía
+`envelope.size`, DoS en `addressparser` por recursión, y entrega a dominio no intencionado por conflicto
+de interpretación de direcciones.
+
+### Impacto mientras la deuda esté abierta
+- **Bajo en el uso actual:** enviamos con **envelope fijo**, **un único destinatario validado** (el email
+  que teclea el admin) y **cero entradas controladas por terceros** → los vectores de inyección/DoS no son
+  alcanzables por un atacante. No bloquea el MVP.
+
+### Condición de salida
+Migrar a **Resend** (u otro servicio) en **v2**, cuando se configure el DNS de pistacore (SPF/DKIM) — de
+paso mejora deliverability. Alternativamente, actualizar a una versión de `nodemailer` ya parcheada cuando
+exista. Revisar el aviso periódicamente.
+
+### Trazabilidad
+- Relaciona: `lib/email/mailer.ts`, `docs/DEPLOY.md §6`, `package.json`, alta de usuario (#3)
+
+---
+
+## DEBT-0014 — Build no 100% reproducible: `package-lock.json` no versionado + `.npmrc legacy-peer-deps`
+
+- **Estado:** abierta (mitigada; no bloquea)
+- **Fecha de registro:** 2026-06-09
+- **Decisor (asumir como deuda):** Nicolas (humano)
+- **Registró:** Agente (Claude Code), confirmado por Orquestador
+- **Severidad global:** media — riesgo de drift latente de versiones; no afecta hoy.
+
+### Contexto
+El repo **no versiona `package-lock.json`** (Vercel hace `npm install` fresco en cada deploy) y trae
+`.npmrc` con `legacy-peer-deps=true`. Esto fue necesario porque el árbol bleeding-edge (React 19 / Next 16
+/ **TypeScript 6.0.3**) hace **crashear arborist** (`Link.matches` null) al re-resolver con `npm install
+<pkg>` sobre un árbol existente; la resolución **desde cero** sí funciona.
+
+### Impacto mientras la deuda esté abierta
+- **Builds no 100% reproducibles:** sin lock versionado, Vercel puede resolver una versión nueva dentro de
+  un rango `^` (hay 5: `@supabase/ssr`, `clsx`, `lucide-react`, `next-themes`, `tailwind-merge`) y romper
+  algo **sin que cambie el código**. El `.npmrc` mitiga la *instalación*, no el *drift de versiones*.
+
+### Condición de salida
+Cuando el stack se estabilice (TS/Next/React fuera de bleeding-edge): **pinear versiones exactas** (quitar
+los `^`) y/o **versionar `package-lock.json`** (Vercel pasaría a `npm ci`, reproducible y más rápido), una
+vez que arborist deje de crashear al re-resolver.
+
+### Trazabilidad
+- Relaciona: `package.json`, `.npmrc`, `docs/DEPLOY.md §6`, `DEBT-0006`
