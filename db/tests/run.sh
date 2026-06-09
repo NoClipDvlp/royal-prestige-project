@@ -76,4 +76,9 @@ echo "== tests siembra propagación (36) =="; run "$HERE/36_propagate_seed.sql"
 echo "== tests set_task_status (37) =="; run "$HERE/37_set_task_status.sql"
 echo "== tests revoke materialize_day (38) =="; run "$HERE/38_revoke_materialize_day.sql"
 
+# Test de lógica TS pura (no-DB): seedStartDate (ADR-0028). Node ≥22 corre .ts por type-stripping;
+# el hook ts-register mapea el alias "@/". Falla el harness (set -e) si alguna aserción no cuadra.
+echo "== test seedStartDate ADR-0028 (TS) =="
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import "$HERE/ts-register.mjs" "$HERE/seed_start_date.test.ts"
+
 echo "RESULT=GREEN"

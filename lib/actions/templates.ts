@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth/server";
 import { bogotaToday } from "@/lib/dashboard/week";
+import { seedStartDate } from "@/lib/tasks/template-seed";
 import type { TaskPriority, TaskRecurrence } from "@/lib/tasks/types";
 
 type Result = { ok: boolean; error?: string };
@@ -25,8 +26,9 @@ export type TemplateItemInput = {
   emoji?: string | null; // ADR-0024: emoji del ítem (se muestra en el cronograma impreso de plantilla)
 };
 
-/** weekdays para weekly (multi-día, recurrencia) y para once (día puntual en el cronograma de plantilla,
- *  print-only — NO altera el motor: una once materializa por su start_date, ignora weekdays). El resto → null. */
+/** weekdays para weekly (multi-día, recurrencia) y para once (su día puntual en el cronograma de plantilla).
+ *  El motor sigue sin leer weekdays para once (materializa por start_date); pero ADR-0028 lo usa al SEMBRAR
+ *  para anclar el start_date de la once a su día (ver seedStartDate). El resto de recurrencias → null. */
 function tplWeekdays(recurrence: TaskRecurrence, weekdays?: number[] | null): number[] | null {
   if (recurrence !== "weekly" && recurrence !== "once") return null;
   return weekdays && weekdays.length > 0 ? weekdays : null;
@@ -233,7 +235,7 @@ export async function assignTemplate(templateId: string, userIds: string[]): Pro
       category_id: it.category_id,
       priority: it.priority,
       recurrence: it.recurrence,
-      start_date: today,
+      start_date: seedStartDate(today, it.recurrence, it.weekdays), // ADR-0028: once → su día; resto → hoy
       time_slot: it.time_slot,
       duration_minutes: it.duration_minutes,
       weekdays: it.weekdays,
@@ -423,9 +425,10 @@ export async function propagateTemplate(templateId: string): Promise<Result> {
         category_id: it.category_id,
         priority: it.priority,
         recurrence: it.recurrence,
-        start_date: today,
+        start_date: seedStartDate(today, it.recurrence, it.weekdays), // ADR-0028: once → su día; resto → hoy
         time_slot: it.time_slot,
         duration_minutes: it.duration_minutes,
+        weekdays: it.weekdays, // paridad con assignTemplate (la siembra omitía weekdays)
         origin: "superior",
         assigned_by_user_id: admin.id,
         template_id: templateId,
