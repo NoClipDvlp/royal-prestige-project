@@ -3,7 +3,7 @@
 import type { ComponentType } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Home, ListTodo, Settings, Shield } from "lucide-react";
+import { BarChart3, Home, ListTodo, Mail, Settings, Shield } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { AppRole } from "@/lib/auth/server";
 
@@ -31,10 +31,16 @@ function tabsFor(role: AppRole | null): Tab[] {
   return DISTRIBUTOR; // distributor (y por defecto)
 }
 
-/** Tab bar flotante glass, role-aware (ADR-0009). */
-export function AppNav({ role }: { role: AppRole | null }) {
+/** Tab bar flotante glass, role-aware (ADR-0009). `msEnabled` añade la sección Correos (ADR-0027). */
+export function AppNav({ role, msEnabled = false }: { role: AppRole | null; msEnabled?: boolean }) {
   const pathname = usePathname();
-  const tabs = tabsFor(role);
+  const tabs = [...tabsFor(role)];
+  if (msEnabled) {
+    const correos: Tab = { href: "/ms", label: "Correos", icon: Mail };
+    const i = tabs.findIndex((t) => t.href === "/ajustes"); // insertar antes de Ajustes
+    if (i >= 0) tabs.splice(i, 0, correos);
+    else tabs.push(correos);
+  }
   return (
     <nav className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
       <div className="glass flex items-center gap-1 rounded-full p-1.5">
