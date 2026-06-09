@@ -68,6 +68,46 @@ export async function createDistribution(name: string): Promise<Result> {
   return { ok: true };
 }
 
+/** Renombrar distribución (único campo editable). Sesión admin (RLS distributions_update). */
+export async function updateDistribution(id: string, name: string): Promise<Result> {
+  const denied = await requireAdminOrError();
+  if (denied) return denied;
+  if (!name.trim()) return { ok: false, error: "El nombre no puede estar vacío." };
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.from("distributions").update({ name: name.trim() }).eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+/**
+ * Eliminar distribución — REGLA A (#13): rechaza si tiene MIEMBROS (users.distribution_id) u OWNERS
+ * (distribution_owners). Vacía → borra. Evita el 23503 de la FK users.distribution_id (NO ACTION) con un
+ * mensaje claro en vez de un error de BD. Sesión admin (RLS distributions_delete).
+ */
+export async function deleteDistribution(id: string): Promise<Result> {
+  const denied = await requireAdminOrError();
+  if (denied) return denied;
+  const supabase = await createSupabaseServerClient();
+
+  const { count: members } = await supabase
+    .from("users")
+    .select("id", { count: "exact", head: true })
+    .eq("distribution_id", id);
+  const { count: owners } = await supabase
+    .from("distribution_owners")
+    .select("id", { count: "exact", head: true })
+    .eq("distribution_id", id);
+  if ((members ?? 0) > 0 || (owners ?? 0) > 0) {
+    return { ok: false, error: "No se puede eliminar: reasigna o elimina sus distribuidores primero." };
+  }
+
+  const { error } = await supabase.from("distributions").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
 export async function createGlobalCategory(name: string, color: string | null): Promise<Result> {
   const denied = await requireAdminOrError();
   if (denied) return denied;
