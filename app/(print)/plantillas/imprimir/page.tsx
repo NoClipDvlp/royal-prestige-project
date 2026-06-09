@@ -9,13 +9,8 @@ import { getProfile } from "@/lib/auth/server";
 import { bogotaToday, weekStartMonday } from "@/lib/dashboard/week";
 import { addDays, isValidIsoDate } from "@/lib/tasks/dates";
 import { PrintSchedule } from "@/components/tasks/print-schedule";
-import { PrintEditToolbar } from "@/components/tasks/print-edit-toolbar";
+import { PrintStylePanel } from "@/components/tasks/print-style-panel";
 import type { DayItem, TaskPriority, TaskRecurrence } from "@/lib/tasks/types";
-
-const clampScale = (v?: string): number => {
-  const n = Number(v);
-  return Number.isFinite(n) && n >= 0.8 && n <= 1.6 ? n : 1;
-};
 
 type DB = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 
@@ -69,7 +64,7 @@ function weekRange(weekStart: string, weekEnd: string): string {
 export default async function ImprimirPlantillaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ id?: string; from?: string; scale?: string }>;
+  searchParams: Promise<{ id?: string; from?: string }>;
 }) {
   const profile = await getProfile();
   if (profile.role !== "admin") redirect("/"); // solo admin imprime plantillas
@@ -77,7 +72,6 @@ export default async function ImprimirPlantillaPage({
   const sp = await searchParams;
   if (!sp?.id) notFound();
 
-  const scale = clampScale(sp?.scale);
   const supabase = await createSupabaseServerClient();
   const tpl = await loadTemplate(supabase, sp.id);
   if (!tpl) notFound();
@@ -117,13 +111,12 @@ export default async function ImprimirPlantillaPage({
   const printedLabel = `Impreso el ${dnum(today)} de ${MESES[mIdx(today)]} de ${yOf(today)} · Royal Control · Pistacore`;
 
   const base = `/plantillas/imprimir?id=${encodeURIComponent(sp.id)}`;
-  const scaleQ = scale !== 1 ? `&scale=${scale}` : ""; // preserva el tamaño al cambiar de semana
-  const prevHref = `${base}&from=${addDays(weekStart, -7)}${scaleQ}`;
-  const nextHref = `${base}&from=${addDays(weekStart, 7)}${scaleQ}`;
+  const prevHref = `${base}&from=${addDays(weekStart, -7)}`;
+  const nextHref = `${base}&from=${addDays(weekStart, 7)}`;
 
   return (
     <>
-      <PrintEditToolbar prevHref={prevHref} nextHref={nextHref} weekLabel={`${dnum(weekStart)}–${dnum(weekEnd)} ${MESES[mIdx(weekEnd)]}`} />
+      <PrintStylePanel prevHref={prevHref} nextHref={nextHref} weekLabel={`${dnum(weekStart)}–${dnum(weekEnd)} ${MESES[mIdx(weekEnd)]}`} />
       <PrintSchedule
         days={days}
         dayNumbers={dayNumbers}
@@ -131,7 +124,6 @@ export default async function ImprimirPlantillaPage({
         rangeLabel={rangeLabel}
         printedLabel={printedLabel}
         footnote={sinDia.length ? sinDia.join(" · ") : null}
-        scale={scale}
       />
     </>
   );

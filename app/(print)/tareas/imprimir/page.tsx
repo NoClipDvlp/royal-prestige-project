@@ -8,13 +8,8 @@ import { getUser, getProfile } from "@/lib/auth/server";
 import { bogotaToday, weekStartMonday } from "@/lib/dashboard/week";
 import { addDays, isValidIsoDate } from "@/lib/tasks/dates";
 import { PrintSchedule } from "@/components/tasks/print-schedule";
-import { PrintEditToolbar } from "@/components/tasks/print-edit-toolbar";
+import { PrintStylePanel } from "@/components/tasks/print-style-panel";
 import type { DayItem, StatusPct, TaskPriority, TaskRecurrence } from "@/lib/tasks/types";
-
-const clampScale = (v?: string): number => {
-  const n = Number(v);
-  return Number.isFinite(n) && n >= 0.8 && n <= 1.6 ? n : 1;
-};
 
 type DB = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 
@@ -93,14 +88,13 @@ const dnum = (iso: string): number => Number.parseInt(iso.slice(8, 10), 10);
 const mIdx = (iso: string): number => Number.parseInt(iso.slice(5, 7), 10) - 1;
 const yOf = (iso: string): string => iso.slice(0, 4);
 
-export default async function ImprimirPage({ searchParams }: { searchParams: Promise<{ d?: string; scale?: string }> }) {
+export default async function ImprimirPage({ searchParams }: { searchParams: Promise<{ d?: string }> }) {
   const user = await getUser();
   if (!user) redirect("/login");
   const profile = await getProfile();
   if (!profile.role) redirect("/sin-rol");
 
   const sp = await searchParams;
-  const scale = clampScale(sp?.scale);
   const today = bogotaToday();
   const base = isValidIsoDate(sp?.d) ? sp.d : today;
   const weekStart = weekStartMonday(base);
@@ -133,9 +127,8 @@ export default async function ImprimirPage({ searchParams }: { searchParams: Pro
         title="Cronograma semanal"
         rangeLabel={rangeLabel}
         printedLabel={printedLabel}
-        scale={scale}
       />
-      <PrintEditToolbar />
+      <PrintStylePanel />
     </>
   );
 }

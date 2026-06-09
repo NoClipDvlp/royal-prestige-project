@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { WeekdayPicker } from "@/components/tasks/weekday-picker";
+import { EmojiPicker } from "@/components/admin/emoji-picker";
 import { cn } from "@/lib/cn";
 import { densityClasses } from "@/lib/density";
 import { WORKDAY_END, WORKDAY_START } from "@/lib/constants";
@@ -358,14 +359,7 @@ function ItemForm({
       </div>
       <div className="mt-2 flex flex-col gap-2">
         <div className="flex gap-2">
-          <Input
-            className="w-14 shrink-0 text-center text-lg"
-            placeholder="🙂"
-            value={emoji}
-            onChange={(e) => setEmoji(e.target.value)}
-            aria-label="Emoji (para el cronograma impreso)"
-            maxLength={8}
-          />
+          <EmojiPicker value={emoji} onChange={setEmoji} />
           <Input className="flex-1" placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} />
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
