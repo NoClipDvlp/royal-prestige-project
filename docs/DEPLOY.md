@@ -48,7 +48,8 @@ ALTERs que dependen de objetos creados antes:
 | 10 | `db/migrations/0009_series_by_user.sql` | BI sparkline: `compliance_series_by_user` (`SECURITY DEFINER` + gate admin/auditor). Aditiva (solo función + grant) → **después** de 0006 (ADR-0014). |
 | 11 | `db/migrations/0010_customized_trigger.sql` | Trigger `mark_task_customized` (BEFORE UPDATE on tasks, gateado por rol distribuidor) → propagación no-destructiva de plantillas. Aditiva → **después** de 0008 (ADR-0016). |
 | 12 | `db/migrations/0011_user_delete_fks.sql` | Integridad del borrado de usuario: 4 FKs → `users(id)` que estaban en NO ACTION → `created_by`/`assigned_by` nullable + `ON DELETE SET NULL` (artefactos compartidos sobreviven sin autor); `task_instances.owner_user_id`/`distribution_id` → `ON DELETE CASCADE`. Solo ALTERs → **después** de 0008 (ADR-0017). |
-| 13 | `db/seed/roles.sql` | Intencionalmente **sin INSERTs** (no hay categorías de fábrica ni admin hardcodeado). Puede omitirse; se incluye por completitud. |
+| 13 | `db/migrations/0012_weekly_multiday.sql` | Recurrencia semanal multi-día: `weekdays smallint[]` (1=lun…7=dom) en `tasks` y `template_items` + CHECK; `is_task_due` filtra por días (NULL/empty = legacy, día de start_date). Aditiva, retrocompatible → **después** de 0008 (ADR-0019). |
+| 14 | `db/seed/roles.sql` | Intencionalmente **sin INSERTs** (no hay categorías de fábrica ni admin hardcodeado). Puede omitirse; se incluye por completitud. |
 
 **Vía A — SQL Editor (recomendado para la primera vez):** abre **SQL Editor**, y pega y ejecuta el
 contenido de cada archivo **uno por uno, en el orden de la tabla**. (El SQL Editor corre como `postgres`,
@@ -69,6 +70,7 @@ psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0008_templates.sql
 psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0009_series_by_user.sql
 psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0010_customized_trigger.sql
 psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0011_user_delete_fks.sql
+psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0012_weekly_multiday.sql
 ```
 
 **Vía C — consolidado idempotente (recomendada para re-aplicar / estado parcial):**
