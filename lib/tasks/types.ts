@@ -13,6 +13,7 @@ export type DayItem = {
   priority: TaskPriority;
   recurrence: TaskRecurrence;
   weekdays?: number[] | null; // ADR-0019: días de la weekly (para pre-rellenar el editor de recurrencia)
+  emoji?: string | null; // ADR-0024: emoji del ítem de plantilla (solo en el print de plantilla)
   status: StatusPct;
 };
 

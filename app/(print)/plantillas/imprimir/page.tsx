@@ -27,6 +27,7 @@ type ItemRow = {
   priority: string | null;
   recurrence: string | null;
   weekdays: number[] | null;
+  emoji: string | null;
 };
 
 /** isodow (1=lun…7=dom) en los que aparece el ítem esa semana; [] = sin día (puntual sin día asignado). */
@@ -49,7 +50,7 @@ async function loadTemplate(supabase: DB, id: string) {
   if (!tpl) return null;
   const { data: items } = await supabase
     .from("template_items")
-    .select("id, title, time_slot, duration_minutes, priority, recurrence, weekdays")
+    .select("id, title, time_slot, duration_minutes, priority, recurrence, weekdays, emoji")
     .eq("template_id", id)
     .order("time_slot", { nullsFirst: false });
   return { name: (tpl.name as string) ?? "Plantilla", items: (items ?? []) as unknown as ItemRow[] };
@@ -105,6 +106,7 @@ export default async function ImprimirPlantillaPage({
         priority: (it.priority ?? "medium") as TaskPriority,
         recurrence: (it.recurrence ?? "once") as TaskRecurrence,
         weekdays: it.weekdays ?? null,
+        emoji: it.emoji ?? null, // ADR-0024
         status: 0, // plantilla: sin estado
       });
     }

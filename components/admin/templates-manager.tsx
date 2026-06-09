@@ -41,6 +41,7 @@ export type AdminTemplateItem = {
   timeSlot: string | null;
   durationMinutes: number | null;
   weekdays: number[] | null;
+  emoji: string | null;
 };
 export type AdminTemplate = {
   id: string;
@@ -262,7 +263,10 @@ function ItemRow({ item, catName, categories }: { item: AdminTemplateItem; catNa
       : "sin hora";
   return (
     <div className={cn("flex items-center gap-2 rounded-xl bg-white/40 transition-colors hover:bg-white/60 dark:bg-white/5 dark:hover:bg-white/10", d.rowPad)}>
-      <span className="min-w-0 flex-1 truncate text-sm text-fg">{item.title}</span>
+      <span className="min-w-0 flex-1 truncate text-sm text-fg">
+        {item.emoji ? <span className="mr-1">{item.emoji}</span> : null}
+        {item.title}
+      </span>
       {d.showSecondary && (
         <span className="hidden shrink-0 text-[11px] text-muted sm:inline">
           {range} · {RECURRENCE_LABEL[item.recurrence]} · {PRIORITY_LABEL[item.priority]}
@@ -317,6 +321,7 @@ function ItemForm({
   const [priority, setPriority] = useState<TaskPriority>(item?.priority ?? "medium");
   const [categoryId, setCategoryId] = useState<string>(item?.categoryId ?? "");
   const [weekdays, setWeekdays] = useState<number[]>(item?.weekdays ?? []);
+  const [emoji, setEmoji] = useState<string>(item?.emoji ?? "");
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -336,6 +341,7 @@ function ItemForm({
       durationMinutes: duration,
       // weekly: días de recurrencia; once: día puntual para el cronograma de plantilla (print). Resto: sin día.
       weekdays: recurrence === "weekly" || recurrence === "once" ? weekdays : null,
+      emoji: emoji.trim() ? emoji.trim() : null, // ADR-0024
     };
     start(async () => {
       const r = item ? await updateTemplateItem(item.id, payload) : await createTemplateItem(templateId as string, payload);
@@ -351,7 +357,17 @@ function ItemForm({
         <button type="button" onClick={onDone} aria-label="Cerrar" className="text-muted transition hover:text-fg"><X size={15} /></button>
       </div>
       <div className="mt-2 flex flex-col gap-2">
-        <Input placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} />
+        <div className="flex gap-2">
+          <Input
+            className="w-14 shrink-0 text-center text-lg"
+            placeholder="🙂"
+            value={emoji}
+            onChange={(e) => setEmoji(e.target.value)}
+            aria-label="Emoji (para el cronograma impreso)"
+            maxLength={8}
+          />
+          <Input className="flex-1" placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} />
+        </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           <Select value={hour ?? ""} onChange={(e) => setHour(e.target.value === "" ? null : Number(e.target.value))} aria-label="Hora">
             <option value="">Sin hora</option>

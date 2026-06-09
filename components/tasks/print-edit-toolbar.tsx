@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Printer, ChevronLeft, ChevronRight, Minus, Plus, RotateCcw } from "lucide-react";
+import { Printer, ChevronLeft, ChevronRight, Minus, Plus, RotateCcw, Download } from "lucide-react";
 
 /**
  * Barra de edición del IMPRINT (solo vista de impresión, no-print en el papel). Permite agrandar/reducir
@@ -22,6 +23,30 @@ export function PrintEditToolbar({
   const pathname = usePathname();
   const sp = useSearchParams();
   const scale = Math.round((Number(sp.get("scale")) || 1) * 100) / 100;
+  const [busy, setBusy] = useState(false);
+
+  // Descargar el cronograma como PNG de alta resolución (pixelRatio 3 → ~3168px de ancho).
+  async function downloadImage() {
+    const node = document.querySelector<HTMLElement>(".rc-page");
+    if (!node) return;
+    setBusy(true);
+    try {
+      const { toPng } = await import("html-to-image");
+      const dataUrl = await toPng(node, {
+        pixelRatio: 3,
+        backgroundColor: "#ffffff",
+        style: { boxShadow: "none", margin: "0" },
+      });
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = "cronograma-semanal.png";
+      a.click();
+    } catch {
+      /* noop: si falla la captura, el usuario puede usar Imprimir → Guardar como PDF */
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const setScale = (v: number | null) => {
     const p = new URLSearchParams(sp.toString());
@@ -58,6 +83,14 @@ export function PrintEditToolbar({
       </button>
 
       <span className="mx-1 h-4 w-px bg-black/10" />
+      <button
+        type="button"
+        onClick={downloadImage}
+        disabled={busy}
+        className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-[#1b1f2e] ring-1 ring-black/10 hover:bg-black/5 disabled:opacity-50"
+      >
+        <Download size={14} /> {busy ? "Generando…" : "Imagen"}
+      </button>
       <button
         type="button"
         onClick={() => window.print()}

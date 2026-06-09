@@ -43,7 +43,7 @@ async function AdminData() {
     supabase
       .from("task_templates")
       .select(
-        "id, name, description, template_items(id, title, category_id, priority, recurrence, time_slot, duration_minutes, weekdays)",
+        "id, name, description, template_items(id, title, category_id, priority, recurrence, time_slot, duration_minutes, weekdays, emoji)",
       )
       .is("deleted_at", null)
       .order("created_at"),
@@ -64,6 +64,7 @@ async function AdminData() {
     time_slot: string | null;
     duration_minutes: number | null;
     weekdays: number[] | null;
+    emoji: string | null;
   };
   type TplRaw = { id: string; name: string; description: string | null; template_items: ItemRaw[] | null };
 
@@ -82,6 +83,7 @@ async function AdminData() {
           timeSlot: i.time_slot,
           durationMinutes: i.duration_minutes,
           weekdays: i.weekdays,
+          emoji: i.emoji,
         }),
       )
       .sort((a, b) => (a.timeSlot ?? "99:99").localeCompare(b.timeSlot ?? "99:99")),

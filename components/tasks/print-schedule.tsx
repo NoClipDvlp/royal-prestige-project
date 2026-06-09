@@ -44,9 +44,10 @@ const PRINT_CSS = `
   .cal-cols{position:absolute;inset:0;display:flex}
   .cal-col{position:relative;flex:1;border-left:1px solid var(--line)}
   .cal-col.we{background:#fafbfe}
-  .ev{position:absolute;overflow:hidden;border:1px solid var(--line);border-left-width:3px;border-radius:5px;background:#fff;padding:3px 4px}
+  .ev{position:absolute;overflow:hidden;display:flex;gap:4px;border:1px solid var(--line);border-left-width:3px;border-radius:5px;background:#fff;padding:3px 4px}
   .ev.hi{border-left-color:var(--hi)} .ev.me{border-left-color:var(--me)} .ev.lo{border-left-color:var(--lo)}
-  .ev .ebody{min-width:0}
+  .ev .eemoji{flex:none;font-size:calc(var(--fs,1) * 13px);line-height:1.1}
+  .ev .ebody{min-width:0;flex:1}
   .ev .et{font-size:calc(var(--fs,1) * 8px);font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;line-height:1.2;white-space:nowrap}
   .ev .en{font-size:calc(var(--fs,1) * 9.5px);line-height:1.2;color:var(--fg);overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;word-break:break-word}
   .ev.hi .en{font-weight:700}
@@ -56,8 +57,9 @@ const PRINT_CSS = `
   .cal-sin{display:flex;margin-top:8px;border-top:2px solid var(--line);padding-top:5px}
   .cal-sin .lbl{flex:none;font-size:calc(var(--fs,1) * 10px);font-weight:700;color:var(--fg);padding-right:8px;text-align:right}
   .cal-sin .scol{flex:1;display:flex;flex-direction:column;gap:3px;padding:0 2px}
-  .cal-sin .si{border:1px solid var(--line);border-left-width:3px;border-radius:5px;padding:2px 4px}
+  .cal-sin .si{display:flex;gap:4px;align-items:baseline;border:1px solid var(--line);border-left-width:3px;border-radius:5px;padding:2px 4px}
   .cal-sin .si.hi{border-left-color:var(--hi)} .cal-sin .si.me{border-left-color:var(--me)} .cal-sin .si.lo{border-left-color:var(--lo)}
+  .cal-sin .si .eemoji{flex:none;font-size:calc(var(--fs,1) * 11px)}
   .cal-sin .si .en{font-size:calc(var(--fs,1) * 9px);line-height:1.15;color:var(--fg)}
   .rc-empty{padding:60px 0;text-align:center;color:#aab0bd;font-size:calc(var(--fs,1) * 15px);font-style:italic}
   .rc-note{margin:8px 0 0;font-size:calc(var(--fs,1) * 10.5px);color:var(--muted)}
@@ -92,6 +94,7 @@ function Event({ b, pxPerHour, startMin, minBlock }: { b: PrintBlock; pxPerHour:
         width: `calc(${widthPct}% - 4px)`,
       }}
     >
+      {it.emoji ? <span className="eemoji">{it.emoji}</span> : null}
       <div className="ebody">
         <div className="et">{label}</div>
         <div className="en">{it.title}</div>
@@ -193,6 +196,7 @@ export function PrintSchedule({
                   <div key={i} className="scol">
                     {items.map((it) => (
                       <div key={it.taskId} className={`si ${PRIO_CLASS[it.priority] ?? "me"}`}>
+                        {it.emoji ? <span className="eemoji">{it.emoji}</span> : null}
                         <span className="en">{it.title}</span>
                       </div>
                     ))}

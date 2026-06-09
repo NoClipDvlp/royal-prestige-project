@@ -22,6 +22,7 @@ export type TemplateItemInput = {
   timeSlot?: string | null; // HH:MM
   durationMinutes?: number | null;
   weekdays?: number[] | null; // ADR-0019: días isodow 1=lun…7=dom; solo weekly
+  emoji?: string | null; // ADR-0024: emoji del ítem (se muestra en el cronograma impreso de plantilla)
 };
 
 /** weekdays para weekly (multi-día, recurrencia) y para once (día puntual en el cronograma de plantilla,
@@ -93,6 +94,7 @@ export async function createTemplateItem(templateId: string, item: TemplateItemI
     time_slot: item.timeSlot ?? null,
     duration_minutes: item.durationMinutes ?? null, // CHECK en DB (0008): >0 y tope 22:00
     weekdays: tplWeekdays(item.recurrence, item.weekdays), // ADR-0019
+    emoji: item.emoji ?? null, // ADR-0024
   });
   if (error) return { ok: false, error: error.message };
   revalidatePath("/admin");
@@ -109,6 +111,7 @@ export async function updateTemplateItem(id: string, changes: Partial<TemplateIt
   if (changes.recurrence !== undefined) patch.recurrence = changes.recurrence;
   if (changes.timeSlot !== undefined) patch.time_slot = changes.timeSlot;
   if (changes.durationMinutes !== undefined) patch.duration_minutes = changes.durationMinutes;
+  if (changes.emoji !== undefined) patch.emoji = changes.emoji; // ADR-0024
   // ADR-0019: si llega recurrence (el form manda payload completo), normaliza weekdays por ella.
   if (changes.recurrence !== undefined) patch.weekdays = tplWeekdays(changes.recurrence, changes.weekdays);
   else if (changes.weekdays !== undefined) patch.weekdays = changes.weekdays;
