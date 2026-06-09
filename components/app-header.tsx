@@ -5,6 +5,7 @@ import { Logo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { DensityToggle } from "@/components/ui/density";
+import { LogoutButton } from "@/components/auth/logout-button";
 
 /** Header estilo app iOS: barra translúcida pegajosa con blur. */
 export function AppHeader() {
@@ -19,6 +20,7 @@ export function AppHeader() {
             <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-accent" />
           </Button>
           <ThemeToggle />
+          <LogoutButton iconOnly />
         </div>
       </div>
     </header>
