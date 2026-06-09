@@ -11,9 +11,8 @@ import { WeekdayPicker } from "@/components/tasks/weekday-picker";
 import { EmojiPicker } from "@/components/admin/emoji-picker";
 import { cn } from "@/lib/cn";
 import { densityClasses } from "@/lib/density";
-import { WORKDAY_END, WORKDAY_START } from "@/lib/constants";
+import { WORKDAY_END_MIN, WORKDAY_START_MIN, hhmmToMin, minToHhmm } from "@/lib/tasks/time";
 import {
-  DURATION_OPTIONS,
   PRIORITY_LABEL,
   RECURRENCE_LABEL,
   type TaskPriority,
@@ -52,12 +51,6 @@ export type AdminTemplate = {
   items: AdminTemplateItem[];
 };
 
-const HOURS = Array.from({ length: WORKDAY_END - WORKDAY_START + 1 }, (_, i) => WORKDAY_START + i);
-const WORKDAY_END_MIN = WORKDAY_END * 60;
-
-function hourOf(timeSlot: string | null): number | null {
-  return timeSlot ? Number.parseInt(timeSlot, 10) : null;
-}
 
 export function TemplatesManager({ templates, categories }: { templates: AdminTemplate[]; categories: CatOption[] }) {
   const { density } = useDensity();
@@ -327,35 +320,39 @@ function ItemForm({
   onDone: () => void;
 }) {
   const [title, setTitle] = useState(item?.title ?? "");
-  const [hour, setHour] = useState<number | null>(hourOf(item?.timeSlot ?? null));
-  const [duration, setDuration] = useState<number | null>(item?.durationMinutes ?? null);
+  const [start, setStart] = useState<string>(item?.timeSlot ? item.timeSlot.slice(0, 5) : ""); // "" = sin hora
+  const [end, setEnd] = useState<string>(item?.timeSlot && item?.durationMinutes ? minToHhmm(hhmmToMin(item.timeSlot) + item.durationMinutes) : "");
   const [recurrence, setRecurrence] = useState<TaskRecurrence>(item?.recurrence ?? "once");
   const [priority, setPriority] = useState<TaskPriority>(item?.priority ?? "medium");
   const [categoryId, setCategoryId] = useState<string>(item?.categoryId ?? "");
   const [weekdays, setWeekdays] = useState<number[]>(item?.weekdays ?? []);
   const [emoji, setEmoji] = useState<string>(item?.emoji ?? "");
   const [err, setErr] = useState<string | null>(null);
-  const [pending, start] = useTransition();
+  const [pending, startTransition] = useTransition();
 
-  const overflows = duration != null && hour != null && hour * 60 + duration > WORKDAY_END_MIN;
+  const sMin = start ? hhmmToMin(start) : null;
+  const eMin = end ? hhmmToMin(end) : null;
+  const invalid =
+    (sMin != null && (sMin < WORKDAY_START_MIN || sMin >= WORKDAY_END_MIN)) ||
+    (eMin != null && (sMin == null || eMin <= sMin || eMin > WORKDAY_END_MIN));
 
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    if (overflows) return setErr("La duración se pasa de las 22:00.");
+    if (invalid) return setErr("Revisa el horario (8:00–22:00, fin posterior al inicio).");
     setErr(null);
     const payload: TemplateItemInput = {
       title: title.trim(),
       categoryId: categoryId || null,
       priority,
       recurrence,
-      timeSlot: hour != null ? `${String(hour).padStart(2, "0")}:00` : null,
-      durationMinutes: duration,
+      timeSlot: start || null,
+      durationMinutes: start && end ? hhmmToMin(end) - hhmmToMin(start) : null,
       // weekly: días de recurrencia; once: día puntual para el cronograma de plantilla (print). Resto: sin día.
       weekdays: recurrence === "weekly" || recurrence === "once" ? weekdays : null,
       emoji: emoji.trim() ? emoji.trim() : null, // ADR-0024
     };
-    start(async () => {
+    startTransition(async () => {
       const r = item ? await updateTemplateItem(item.id, payload) : await createTemplateItem(templateId as string, payload);
       if (!r.ok) setErr(r.error ?? "Error");
       else onDone();
@@ -373,18 +370,17 @@ function ItemForm({
           <EmojiPicker value={emoji} onChange={setEmoji} />
           <Input className="flex-1" placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} />
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          <Select value={hour ?? ""} onChange={(e) => setHour(e.target.value === "" ? null : Number(e.target.value))} aria-label="Hora">
-            <option value="">Sin hora</option>
-            {HOURS.map((h) => (
-              <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>
-            ))}
-          </Select>
-          <Select value={duration === null ? "" : String(duration)} onChange={(e) => setDuration(e.target.value === "" ? null : Number(e.target.value))} aria-label="Duración">
-            {DURATION_OPTIONS.map((o) => (
-              <option key={o.label} value={o.value === null ? "" : String(o.value)}>{o.label}</option>
-            ))}
-          </Select>
+        <div className="flex items-center gap-2">
+          <Input type="time" min="08:00" max="22:00" value={start} onChange={(e) => setStart(e.target.value)} aria-label="Hora de inicio" className="flex-1" />
+          <span className="shrink-0 text-xs text-muted">a</span>
+          <Input type="time" min="08:00" max="22:00" value={end} onChange={(e) => setEnd(e.target.value)} aria-label="Hora de fin" className="flex-1" />
+          {start ? (
+            <button type="button" onClick={() => { setStart(""); setEnd(""); }} className="shrink-0 text-[11px] text-muted transition hover:text-fg">
+              Sin hora
+            </button>
+          ) : null}
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <Select value={recurrence} onChange={(e) => setRecurrence(e.target.value as TaskRecurrence)} aria-label="Recurrencia">
             {(Object.keys(RECURRENCE_LABEL) as TaskRecurrence[]).map((r) => (
               <option key={r} value={r}>{RECURRENCE_LABEL[r]}</option>
@@ -418,7 +414,7 @@ function ItemForm({
         {err ? <p className="text-xs text-red-500">{err}</p> : null}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onDone} className="h-8 text-xs">Cancelar</Button>
-          <Button type="submit" disabled={pending || !title.trim() || overflows} className="h-8 text-xs">
+          <Button type="submit" disabled={pending || !title.trim() || invalid} className="h-8 text-xs">
             {item ? "Guardar" : "Añadir"}
           </Button>
         </div>

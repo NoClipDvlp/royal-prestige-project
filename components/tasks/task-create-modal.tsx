@@ -8,9 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { WeekdayPicker } from "@/components/tasks/weekday-picker";
 import { createTask } from "@/lib/actions/tasks";
-import { WORKDAY_END, WORKDAY_START } from "@/lib/constants";
+import { WORKDAY_END_MIN, WORKDAY_START_MIN, hhmmToMin, minToHhmm } from "@/lib/tasks/time";
 import {
-  DURATION_OPTIONS,
   PRIORITY_LABEL,
   RECURRENCE_LABEL,
   type TaskPriority,
@@ -18,8 +17,6 @@ import {
 } from "@/lib/tasks/types";
 
 export type TaskCategory = { id: string; name: string };
-
-const WORKDAY_END_MIN = WORKDAY_END * 60; // tope de la franja (22:00 = 1320), espejo del CHECK de 0004
 
 /**
  * Modal de creación estilo Google Calendar: título / hora / duración / recurrencia / prioridad / categoría.
@@ -42,21 +39,21 @@ export function TaskCreateModal({
   onClose: () => void;
 }) {
   const [title, setTitle] = useState("");
-  const [hour, setHour] = useState(startHour);
-  const [duration, setDuration] = useState<number | null>(durationMin);
+  const [start, setStart] = useState(minToHhmm(startHour * 60)); // "HH:MM"
+  const [end, setEnd] = useState<string>(durationMin ? minToHhmm(startHour * 60 + durationMin) : ""); // "" = sin duración
   const [recurrence, setRecurrence] = useState<TaskRecurrence>("once");
   const [weekdays, setWeekdays] = useState<number[]>([]);
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [categoryId, setCategoryId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
+  const [pending, startTransition] = useTransition();
   const titleRef = useRef<HTMLInputElement>(null);
 
   // Resincroniza con lo que trae el drag cada vez que se abre (hora/duración del rango).
   useEffect(() => {
     if (!open) return;
-    setHour(startHour);
-    setDuration(durationMin);
+    setStart(minToHhmm(startHour * 60));
+    setEnd(durationMin ? minToHhmm(startHour * 60 + durationMin) : "");
     setTitle("");
     setError(null);
     const t = setTimeout(() => titleRef.current?.focus(), 50);
@@ -65,24 +62,30 @@ export function TaskCreateModal({
 
   if (!open) return null;
 
-  const hours = Array.from({ length: WORKDAY_END - WORKDAY_START + 1 }, (_, i) => WORKDAY_START + i);
-  const overflowsFranja = duration != null && hour * 60 + duration > WORKDAY_END_MIN;
+  const startMin = hhmmToMin(start);
+  const endMin = end ? hhmmToMin(end) : null;
+  const invalidStart = !start || startMin < WORKDAY_START_MIN || startMin >= WORKDAY_END_MIN;
+  const invalidEnd = endMin != null && (endMin <= startMin || endMin > WORKDAY_END_MIN);
 
   function handle(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    if (overflowsFranja) {
-      setError("La duración se pasa de las 22:00. Reduce la duración o adelanta la hora.");
+    if (invalidStart) {
+      setError("La hora de inicio debe estar entre 08:00 y 22:00.");
+      return;
+    }
+    if (invalidEnd) {
+      setError("La hora de fin debe ser posterior al inicio y no pasar de las 22:00.");
       return;
     }
     setError(null);
-    start(async () => {
+    startTransition(async () => {
       const res = await createTask({
         title: title.trim(),
         recurrence,
         startDate: date,
-        timeSlot: `${String(hour).padStart(2, "0")}:00`,
-        durationMinutes: duration,
+        timeSlot: start,
+        durationMinutes: endMin != null ? endMin - startMin : null,
         priority,
         categoryId: categoryId || null,
         weekdays: recurrence === "weekly" ? weekdays : null, // ADR-0019
@@ -119,32 +122,30 @@ export function TaskCreateModal({
             />
           </label>
 
-          <div className="grid grid-cols-2 gap-3">
-            <label className="space-y-1">
-              <span className="px-1 text-[11px] text-muted">Hora</span>
-              <Select className="w-full" value={hour} onChange={(e) => setHour(Number(e.target.value))} aria-label="Hora">
-                {hours.map((h) => (
-                  <option key={h} value={h}>
-                    {String(h).padStart(2, "0")}:00
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <label className="space-y-1">
-              <span className="px-1 text-[11px] text-muted">Duración</span>
-              <Select
-                className="w-full"
-                value={duration === null ? "" : String(duration)}
-                onChange={(e) => setDuration(e.target.value === "" ? null : Number(e.target.value))}
-                aria-label="Duración"
-              >
-                {DURATION_OPTIONS.map((o) => (
-                  <option key={o.label} value={o.value === null ? "" : String(o.value)}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-            </label>
+          <div className="space-y-1">
+            <span className="px-1 text-[11px] text-muted">Horario (8:00–22:00)</span>
+            <div className="flex items-center gap-2">
+              <Input type="time" min="08:00" max="22:00" value={start} onChange={(e) => setStart(e.target.value)} aria-label="Hora de inicio" className="flex-1" required />
+              <span className="shrink-0 text-xs text-muted">a</span>
+              <Input type="time" min="08:00" max="22:00" value={end} onChange={(e) => setEnd(e.target.value)} aria-label="Hora de fin" className="flex-1" />
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              {([["30 min", 30], ["1 h", 60], ["1 h 30", 90], ["2 h", 120]] as const).map(([label, m]) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setEnd(minToHhmm(Math.min(WORKDAY_END_MIN, hhmmToMin(start) + m)))}
+                  className="rounded-lg border border-white/60 bg-white/40 px-2 py-0.5 text-[11px] text-muted transition hover:text-fg dark:border-white/10 dark:bg-white/5"
+                >
+                  {label}
+                </button>
+              ))}
+              {end ? (
+                <button type="button" onClick={() => setEnd("")} className="ml-auto text-[11px] text-muted transition hover:text-fg">
+                  Sin duración
+                </button>
+              ) : null}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -205,7 +206,7 @@ export function TaskCreateModal({
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={pending || !title.trim() || overflowsFranja}>
+            <Button type="submit" disabled={pending || !title.trim() || invalidStart || invalidEnd}>
               <Plus size={16} /> Crear tarea
             </Button>
           </div>
