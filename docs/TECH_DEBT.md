@@ -391,3 +391,27 @@ de pnpm, no un problema del árbol.
 
 ### Trazabilidad
 - Relaciona: `pnpm-lock.yaml`, `package.json`, nodemailer (#3 / DEBT-0013), `docs/DEPLOY.md §6`
+
+---
+
+## DEBT-0015 — Sin rate-limit propio en server actions de auth/admin
+
+- **Estado:** abierta (diferida; riesgo bajo)
+- **Fecha de registro:** 2026-06-09
+- **Decisor:** Nicolas (humano) · **Registró:** Agente (auditoría ADR-0020)
+- **Severidad global:** baja — las acciones sensibles están admin-gated; GoTrue limita los endpoints de auth.
+
+### Contexto
+Los Server Actions de Next traen CSRF integrado (POST same-origin + action IDs) y GoTrue aplica rate-limit
+a signIn/signUp/recovery. Pero acciones propias como `checkEmailAvailable` (abierta, B6) o `adminCreateUser`
+no tienen rate-limit explícito de aplicación.
+
+### Impacto mientras la deuda esté abierta
+- `checkEmailAvailable` es un endpoint abierto → permite sondeo de existencia de emails (enumeración leve,
+  ya asumida como decisión de producto) y, sin límite, abuso por volumen. Las admin-gated requieren sesión admin.
+
+### Condición de salida
+Añadir rate-limit (p. ej. Upstash/Vercel KV por IP) a las acciones públicas sensibles cuando haya tráfico real.
+
+### Trazabilidad
+- Relaciona: `lib/actions/account.ts` (checkEmailAvailable), `ADR-0020`, `DEBT-0013`
