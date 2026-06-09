@@ -63,19 +63,36 @@ const PRINT_CSS = `
   }
 `;
 
+/** Hora fin = inicio + duración (HH:MM). */
+function endTime(start: string, dur: number): string {
+  const [h, m] = start.slice(0, 5).split(":").map(Number);
+  const tot = h * 60 + m + dur;
+  return `${String(Math.floor(tot / 60)).padStart(2, "0")}:${String(tot % 60).padStart(2, "0")}`;
+}
+
 function Cell({ items, weekend }: { items: DayItem[]; weekend: boolean }) {
   return (
     <td className={weekend ? "cell we" : "cell"}>
-      {items.map((it) => (
-        <div key={it.taskId} className={`t ${PRIO_CLASS[it.priority] ?? "me"}${it.status === 100 ? " done" : ""}`}>
-          <span className="em">{taskEmoji(it.title)}</span>
-          <div className="meta">
-            {it.timeSlot ? <div className="tm">{it.timeSlot.slice(0, 5)}</div> : null}
-            <div className="tt">{it.title}</div>
+      {items.map((it) => {
+        const start = it.timeSlot ? it.timeSlot.slice(0, 5) : null;
+        // hora inicio – hora fin (si hay duración); altura ∝ duración → un bloque de 2h ocupa el doble.
+        const label = start ? (it.durationMinutes ? `${start} – ${endTime(start, it.durationMinutes)}` : start) : null;
+        const blockH = it.durationMinutes ? Math.max(30, (it.durationMinutes / 60) * 30) : undefined;
+        return (
+          <div
+            key={it.taskId}
+            className={`t ${PRIO_CLASS[it.priority] ?? "me"}${it.status === 100 ? " done" : ""}`}
+            style={blockH ? { minHeight: `${blockH}px` } : undefined}
+          >
+            <span className="em">{taskEmoji(it.title)}</span>
+            <div className="meta">
+              {label ? <div className="tm">{label}</div> : null}
+              <div className="tt">{it.title}</div>
+            </div>
+            {it.status === 100 ? <span className="ok">✓</span> : null}
           </div>
-          {it.status === 100 ? <span className="ok">✓</span> : null}
-        </div>
-      ))}
+        );
+      })}
     </td>
   );
 }
