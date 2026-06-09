@@ -7,7 +7,6 @@
 import { layoutDay, weekWindow, type PrintBlock } from "@/lib/tasks/print";
 import type { DayItem } from "@/lib/tasks/types";
 
-const DOW = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const PRIO_CLASS: Record<string, string> = { high: "hi", medium: "me", low: "lo" };
 const GUTTER = 46; // ancho del carril de horas (px)
 const USABLE = 620; // alto objetivo del timeline (px) para llenar una página landscape
@@ -104,16 +103,18 @@ function Event({ b, pxPerHour, startMin }: { b: PrintBlock; pxPerHour: number; s
   );
 }
 
+export type PrintColumn = { dow: string; dnum: number; weekend: boolean };
+
 export function PrintSchedule({
   days,
-  dayNumbers,
+  columns,
   title,
   rangeLabel,
   printedLabel,
   footnote,
 }: {
-  days: DayItem[][]; // 7 (lun…dom)
-  dayNumbers: number[]; // 7
+  days: DayItem[][]; // N (semana=7, día=1)
+  columns: PrintColumn[]; // N — encabezados (día de semana + número + finde)
   title: string;
   rangeLabel: string;
   printedLabel: string;
@@ -151,10 +152,10 @@ export function PrintSchedule({
           <>
             <div className="cal-head">
               <div className="sp" style={{ width: GUTTER }} />
-              {DOW.map((d, i) => (
-                <div key={d} className={i >= 5 ? "dh we" : "dh"}>
-                  <span className="dow">{d}</span>
-                  <span className="dnum">{dayNumbers[i]}</span>
+              {columns.map((c, i) => (
+                <div key={i} className={c.weekend ? "dh we" : "dh"}>
+                  <span className="dow">{c.dow}</span>
+                  <span className="dnum">{c.dnum}</span>
                 </div>
               ))}
             </div>
@@ -173,7 +174,7 @@ export function PrintSchedule({
                 ))}
                 <div className="cal-cols">
                   {blocksByDay.map((blocks, i) => (
-                    <div key={i} className={i >= 5 ? "cal-col we" : "cal-col"}>
+                    <div key={i} className={columns[i]?.weekend ? "cal-col we" : "cal-col"}>
                       {blocks.map((b) => (
                         <Event key={b.item.taskId} b={b} pxPerHour={pxPerHour} startMin={startMin} />
                       ))}

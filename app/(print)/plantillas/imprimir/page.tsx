@@ -106,7 +106,8 @@ export default async function ImprimirPlantillaPage({
     }
   }
 
-  const dayNumbers = Array.from({ length: 7 }, (_, i) => dnum(addDays(weekStart, i)));
+  const DOW = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+  const columns = Array.from({ length: 7 }, (_, i) => ({ dow: DOW[i], dnum: dnum(addDays(weekStart, i)), weekend: i >= 5 }));
   const rangeLabel = `${weekRange(weekStart, weekEnd)} · Plantilla`;
   const printedLabel = `Impreso el ${dnum(today)} de ${MESES[mIdx(today)]} de ${yOf(today)} · Royal Control · Pistacore`;
 
@@ -119,7 +120,7 @@ export default async function ImprimirPlantillaPage({
       <PrintStylePanel prevHref={prevHref} nextHref={nextHref} weekLabel={`${dnum(weekStart)}–${dnum(weekEnd)} ${MESES[mIdx(weekEnd)]}`} />
       <PrintSchedule
         days={days}
-        dayNumbers={dayNumbers}
+        columns={columns}
         title={tpl.name}
         rangeLabel={rangeLabel}
         printedLabel={printedLabel}

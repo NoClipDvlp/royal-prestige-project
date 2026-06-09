@@ -41,10 +41,12 @@ export function PrintStylePanel({
   prevHref,
   nextHref,
   weekLabel,
+  viewHrefs,
 }: {
   prevHref?: string;
   nextHref?: string;
   weekLabel?: string;
+  viewHrefs?: { weekHref: string; dayHref: string; current: "week" | "day" };
 }) {
   const [open, setOpen] = useState(false);
   const [s, setS] = useState<Style>(DEFAULTS);
@@ -161,6 +163,14 @@ export function PrintStylePanel({
         <button type="button" onClick={() => setVertical((v) => !v)} aria-label="Cambiar orientación" title={vertical ? "Horizontal" : "Vertical"} className={iconBtn}>
           <RotateCw size={15} className="mx-auto" />
         </button>
+
+        {/* semana / día */}
+        {viewHrefs ? (
+          <div className="flex items-center rounded-full bg-black/5 p-0.5 text-xs">
+            <Link href={viewHrefs.weekHref} className={cn("rounded-full px-2.5 py-1 font-medium", viewHrefs.current === "week" ? "bg-white text-[#1b1f2e] shadow-sm" : "text-[#6b7286]")}>Semana</Link>
+            <Link href={viewHrefs.dayHref} className={cn("rounded-full px-2.5 py-1 font-medium", viewHrefs.current === "day" ? "bg-white text-[#1b1f2e] shadow-sm" : "text-[#6b7286]")}>Día</Link>
+          </div>
+        ) : null}
 
         {prevHref && nextHref ? (
           <div className={cn("flex items-center", vertical && "flex-col gap-0.5")}>
