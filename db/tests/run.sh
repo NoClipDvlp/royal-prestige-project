@@ -55,6 +55,7 @@ echo "== migración 0011 (user delete fks) =="; run "$ROOT/db/migrations/0011_us
 echo "== migración 0012 (weekly multi-día) =="; run "$ROOT/db/migrations/0012_weekly_multiday.sql"
 echo "== migración 0013 (kpi excluye borradas) =="; run "$ROOT/db/migrations/0013_kpi_excluye_borradas.sql"
 echo "== migración 0014 (must_set_password) =="; run "$ROOT/db/migrations/0014_must_set_password.sql"
+echo "== migración 0015 (template_item emoji) =="; run "$ROOT/db/migrations/0015_template_item_emoji.sql"
 echo "== tests de aislamiento (20) =="; run "$HERE/20_isolation_tests.sql"
 echo "== tests auditor labels (21) =="; run "$HERE/21_auditor_labels.sql"
 echo "== tests auth profile (22) =="; run "$HERE/22_auth_profile.sql"
