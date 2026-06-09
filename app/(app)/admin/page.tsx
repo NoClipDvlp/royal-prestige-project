@@ -107,7 +107,7 @@ async function AdminData() {
             label: "Usuarios",
             content: (
               <>
-                <CreateUser />
+                <CreateUser distributions={distributions} />
                 <UsersManager users={users} distributions={distributions} currentAdminId={me?.id ?? ""} />
               </>
             ),
