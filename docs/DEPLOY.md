@@ -49,7 +49,8 @@ ALTERs que dependen de objetos creados antes:
 | 11 | `db/migrations/0010_customized_trigger.sql` | Trigger `mark_task_customized` (BEFORE UPDATE on tasks, gateado por rol distribuidor) → propagación no-destructiva de plantillas. Aditiva → **después** de 0008 (ADR-0016). |
 | 12 | `db/migrations/0011_user_delete_fks.sql` | Integridad del borrado de usuario: 4 FKs → `users(id)` que estaban en NO ACTION → `created_by`/`assigned_by` nullable + `ON DELETE SET NULL` (artefactos compartidos sobreviven sin autor); `task_instances.owner_user_id`/`distribution_id` → `ON DELETE CASCADE`. Solo ALTERs → **después** de 0008 (ADR-0017). |
 | 13 | `db/migrations/0012_weekly_multiday.sql` | Recurrencia semanal multi-día: `weekdays smallint[]` (1=lun…7=dom) en `tasks` y `template_items` + CHECK; `is_task_due` filtra por días (NULL/empty = legacy, día de start_date). Aditiva, retrocompatible → **después** de 0008 (ADR-0019). |
-| 14 | `db/seed/roles.sql` | Intencionalmente **sin INSERTs** (no hay categorías de fábrica ni admin hardcodeado). Puede omitirse; se incluye por completitud. |
+| 14 | `db/migrations/0013_kpi_excluye_borradas.sql` | KPI excluye borradas: las 5 funciones de cálculo añaden `t.deleted_at IS NULL` + `ti.date <> all(t.excluded_dates)` al JOIN. `create or replace` → **después** de 0009 (ADR-0021, revierte 0007/0012 §4). |
+| 15 | `db/seed/roles.sql` | Intencionalmente **sin INSERTs** (no hay categorías de fábrica ni admin hardcodeado). Puede omitirse; se incluye por completitud. |
 
 **Vía A — SQL Editor (recomendado para la primera vez):** abre **SQL Editor**, y pega y ejecuta el
 contenido de cada archivo **uno por uno, en el orden de la tabla**. (El SQL Editor corre como `postgres`,
@@ -71,6 +72,7 @@ psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0009_series_by_user.sql
 psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0010_customized_trigger.sql
 psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0011_user_delete_fks.sql
 psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0012_weekly_multiday.sql
+psql "$PG" -v ON_ERROR_STOP=1 -f db/migrations/0013_kpi_excluye_borradas.sql
 ```
 
 **Vía C — consolidado idempotente (recomendada para re-aplicar / estado parcial):**
@@ -232,7 +234,9 @@ alter table public.users enable trigger trg_users_no_priv_esc;
 - [ ] Marcar estado **0 / 50 / 100** y que persista al recargar.
 - [ ] **Editar una recurrente** → popup con los 3 scopes:
       *Solo este día* / *Este y los siguientes* / *Toda la serie* → cada uno deja el estado esperado.
-- [ ] **Soft-delete** (borrar) una tarea → desaparece del listado; su historial de instancias permanece.
+- [ ] **Eliminar** una tarea (botón en el editor, con confirmación; scope en recurrentes) → desaparece del
+      listado. Las filas de instancias permanecen en BD, pero **ya NO cuentan en el KPI** (ADR-0021). "Solo
+      este día" excluye esa fecha; "toda la serie" la saca entera.
 - [ ] (Si dejaste el cron correr a las 00:05 Bogotá, o corriste `materialize_day` a mano) las tareas
       `daily` aparecen al día siguiente, **nacen en 0** (sin arrastre).
 
