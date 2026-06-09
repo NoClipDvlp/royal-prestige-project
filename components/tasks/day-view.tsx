@@ -92,16 +92,20 @@ function layout(items: DayItem[]): Block[] {
 /**
  * Vista de día como timeline (franja 8–22): cada tarea con duración ocupa un bloque de alto ∝ duración
  * (coalesce instancia→task); solape = columnas apiladas. El drag sobre la franja selecciona un rango
- * (inicio + duración) y lo entrega a `onRangeCreate` (estilo Google Calendar). Sin `onRangeCreate`
- * (futuro/proyección) la vista es solo-lectura: sin drag, sin toggles, sin edición.
+ * (inicio + duración) y lo entrega a `onRangeCreate` (estilo Google Calendar).
+ * - `editable` (ADR-0022): crear/editar/borrar en CUALQUIER día (drag + lápiz). Siempre activo.
+ * - `canMarkStatus`: marcar estado (toggle) SOLO en días con instancia materializada (hoy/pasado); en el
+ *   futuro no hay instancia (sin materialize-on-demand) → se puede planificar pero no marcar todavía.
  */
 export function DayView({
   items,
   editable = true,
+  canMarkStatus = true,
   onRangeCreate,
 }: {
   items: DayItem[];
   editable?: boolean;
+  canMarkStatus?: boolean;
   onRangeCreate?: (startHour: number, endHour: number) => void;
 }) {
   const [editing, setEditing] = useState<DayItem | null>(null);
@@ -209,7 +213,7 @@ export function DayView({
                 // Compacta: oculta la hora-rango inline (el carril + la posición ya la comunican); el alto
                 // del bloque ∝ duración se conserva. Umbral del toggle proporcional → no se pierde en 1h.
                 const showTime = !d.compact && height >= ROW_H * 0.7;
-                const showToggle = editable && height >= ROW_H * 0.9;
+                const showToggle = canMarkStatus && height >= ROW_H * 0.9;
                 const widthPct = 100 / b.lanes;
                 const it = b.item;
                 return (
@@ -271,7 +275,7 @@ export function DayView({
                   <span className={cn("h-2 w-2 shrink-0 rounded-full", PRIORITY_DOT[it.priority])} aria-hidden />
                 )}
                 <span className="flex-1 truncate text-sm text-fg">{it.title}</span>
-                {editable && <StatusToggle taskId={it.taskId} date={it.date} status={it.status} />}
+                {canMarkStatus && <StatusToggle taskId={it.taskId} date={it.date} status={it.status} />}
                 {editable && (
                   <button
                     type="button"
