@@ -32,6 +32,7 @@ export function QuickAdd({
   const setHour = (h: number) => (onHourChange ? onHourChange(h) : setHourInner(h));
   const [recurrence, setRecurrence] = useState<TaskRecurrence>("once");
   const [weekdays, setWeekdays] = useState<number[]>([]);
+  const [onceDate, setOnceDate] = useState(date); // día de la tarea "una vez" (default: día visible)
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const titleRef = useRef<HTMLInputElement>(null);
@@ -39,6 +40,11 @@ export function QuickAdd({
   useEffect(() => {
     if (focusSignal && focusSignal > 0) titleRef.current?.focus();
   }, [focusSignal]);
+
+  // Sigue al día visible del day-nav: si el usuario navega de día, el default de "una vez" se realinea.
+  useEffect(() => {
+    setOnceDate(date);
+  }, [date]);
 
   const hours = Array.from({ length: WORKDAY_END - WORKDAY_START + 1 }, (_, i) => WORKDAY_START + i);
 
@@ -50,7 +56,7 @@ export function QuickAdd({
       const res = await createTask({
         title: title.trim(),
         recurrence,
-        startDate: date,
+        startDate: recurrence === "once" ? onceDate : date, // once: el día elegido; recurrente: arranca en el día visible
         timeSlot: `${String(hour).padStart(2, "0")}:00`,
         priority: "medium",
         weekdays: recurrence === "weekly" ? weekdays : null, // ADR-0019
@@ -59,13 +65,14 @@ export function QuickAdd({
       else {
         setTitle("");
         setWeekdays([]);
+        setOnceDate(date); // vuelve al día visible para la siguiente alta
       }
     });
   }
 
   return (
     <form onSubmit={handle} className="flex flex-col gap-2">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <Input
           ref={titleRef}
           placeholder="Nueva tarea…"
@@ -92,6 +99,15 @@ export function QuickAdd({
             </option>
           ))}
         </Select>
+        {recurrence === "once" && (
+          <Input
+            type="date"
+            value={onceDate}
+            onChange={(e) => setOnceDate(e.target.value)}
+            aria-label="Día de la tarea"
+            className="sm:w-auto"
+          />
+        )}
         <Button type="submit" disabled={pending || !title.trim()}>
           <Plus size={16} /> Añadir
         </Button>
