@@ -7,7 +7,6 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getUser, getProfile } from "@/lib/auth/server";
 import { bogotaToday, weekStartMonday } from "@/lib/dashboard/week";
 import { addDays, isValidIsoDate } from "@/lib/tasks/dates";
-import { buildWeekMatrix } from "@/lib/tasks/print";
 import { PrintSchedule } from "@/components/tasks/print-schedule";
 import { PrintTrigger } from "@/components/tasks/print-trigger";
 import type { DayItem, StatusPct, TaskPriority, TaskRecurrence } from "@/lib/tasks/types";
@@ -103,7 +102,6 @@ export default async function ImprimirPage({ searchParams }: { searchParams: Pro
 
   const supabase = await createSupabaseServerClient();
   const days = await loadWeekItems(supabase, weekStart, today);
-  const matrix = buildWeekMatrix(days);
   const dayNumbers = Array.from({ length: 7 }, (_, i) => dnum(addDays(weekStart, i)));
 
   const { data: me } = await supabase.from("users").select("full_name").eq("id", user.id).maybeSingle();
@@ -124,7 +122,7 @@ export default async function ImprimirPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PrintSchedule
-        matrix={matrix}
+        days={days}
         dayNumbers={dayNumbers}
         title="Cronograma semanal"
         rangeLabel={rangeLabel}

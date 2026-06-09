@@ -8,7 +8,6 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth/server";
 import { bogotaToday, weekStartMonday } from "@/lib/dashboard/week";
 import { addDays, isValidIsoDate } from "@/lib/tasks/dates";
-import { buildWeekMatrix } from "@/lib/tasks/print";
 import { PrintSchedule } from "@/components/tasks/print-schedule";
 import { PrintWeekToolbar } from "@/components/tasks/print-week-toolbar";
 import type { DayItem, TaskPriority, TaskRecurrence } from "@/lib/tasks/types";
@@ -105,7 +104,6 @@ export default async function ImprimirPlantillaPage({
     }
   }
 
-  const matrix = buildWeekMatrix(days);
   const dayNumbers = Array.from({ length: 7 }, (_, i) => dnum(addDays(weekStart, i)));
   const rangeLabel = `${weekRange(weekStart, weekEnd)} · Plantilla`;
   const printedLabel = `Impreso el ${dnum(today)} de ${MESES[mIdx(today)]} de ${yOf(today)} · Royal Control · Pistacore`;
@@ -118,7 +116,7 @@ export default async function ImprimirPlantillaPage({
     <>
       <PrintWeekToolbar prevHref={prevHref} nextHref={nextHref} weekLabel={`${dnum(weekStart)}–${dnum(weekEnd)} ${MESES[mIdx(weekEnd)]}`} />
       <PrintSchedule
-        matrix={matrix}
+        days={days}
         dayNumbers={dayNumbers}
         title={tpl.name}
         rangeLabel={rangeLabel}
