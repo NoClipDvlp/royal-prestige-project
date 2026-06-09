@@ -167,10 +167,11 @@ SMTP_FROM=Pistacore <info@pistacore.com>
 `NEXT_PUBLIC` → no se exponen al cliente). El correo de alta (#3) usa `nodemailer` en un Server Action
 (runtime Node de Vercel). `SMTP_PASS` es el **app-password** de Workspace, no la contraseña del buzón.
 
-> **Build/install:** el repo NO versiona `package-lock.json` (Vercel hace `npm install` fresco) y trae
-> `.npmrc` con `legacy-peer-deps=true` (árbol bleeding-edge React 19 / Next 16 / TS 6). ⚠ **DEUDA:**
-> `nodemailer` tiene avisos de seguridad abiertos (sin versión parcheada aún); el uso es controlado
-> (envelope fijo, único destinatario validado, sin entradas de usuario) → riesgo bajo, a revisar en v2.
+> **Build/install:** el repo usa **PNPM** con `pnpm-lock.yaml` **versionado** (builds reproducibles; Vercel
+> corre `pnpm install --frozen-lockfile`). Añade dependencias **siempre con `pnpm add <dep>`** (nunca `npm
+> install`) para que el lock quede sincronizado. ⚠ **DEUDA (DEBT-0013):** `nodemailer` tiene avisos de
+> seguridad abiertos (sin versión parcheada aún); el uso es controlado (envelope fijo, único destinatario
+> validado, sin entradas de usuario) → riesgo bajo, a revisar/migrar a Resend en v2.
 
 ⚠ La **`service_role` / "secret key"** de Supabase: SOLO server-side. La usa `lib/supabase/admin.ts`
 (marcado `import "server-only"`) desde server actions GATEADAS por `assertCallerIsAdmin()`. **Bypasea la RLS**

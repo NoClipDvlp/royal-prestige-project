@@ -362,29 +362,32 @@ exista. Revisar el aviso periódicamente.
 
 ---
 
-## DEBT-0014 — Build no 100% reproducible: `package-lock.json` no versionado + `.npmrc legacy-peer-deps`
+## DEBT-0014 — Lock de PNPM desincronizado al añadir una dep con npm (build de Vercel roto)
 
-- **Estado:** abierta (mitigada; no bloquea)
+- **Estado:** ✅ CERRADA (2026-06-09) — `pnpm-lock.yaml` regenerado con `pnpm install` (incluye nodemailer
+  + @types/nodemailer, sin drift de otras versiones); `pnpm install --frozen-lockfile` pasa en local
+  (replica el CI de Vercel). Eliminados los artefactos npm erróneos (`.npmrc legacy-peer-deps`,
+  `package-lock.json`). En adelante se usa **PNPM** para este repo.
 - **Fecha de registro:** 2026-06-09
-- **Decisor (asumir como deuda):** Nicolas (humano)
-- **Registró:** Agente (Claude Code), confirmado por Orquestador
-- **Severidad global:** media — riesgo de drift latente de versiones; no afecta hoy.
+- **Decisor:** Nicolas (humano) · **Registró/corrigió:** Agente (Claude Code)
+- **Severidad global:** alta mientras estuvo abierta (build de prod roto), trivial de cerrar.
 
-### Contexto
-El repo **no versiona `package-lock.json`** (Vercel hace `npm install` fresco en cada deploy) y trae
-`.npmrc` con `legacy-peer-deps=true`. Esto fue necesario porque el árbol bleeding-edge (React 19 / Next 16
-/ **TypeScript 6.0.3**) hace **crashear arborist** (`Link.matches` null) al re-resolver con `npm install
-<pkg>` sobre un árbol existente; la resolución **desde cero** sí funciona.
+### Contexto (diagnóstico CORREGIDO)
+El diagnóstico inicial era **equivocado**: se dijo que "el repo no versiona el lock". En realidad el repo
+**usa PNPM** y **sí versiona `pnpm-lock.yaml`** (builds reproducibles). El fallo real fue de proceso:
+`nodemailer` (#3) se añadió con **npm** (`package.json` actualizado + `package-lock.json` local), pero
+**`pnpm-lock.yaml` no se actualizó** → en Vercel `pnpm install --frozen-lockfile` falló (package.json con
+una dep ausente del lock). El "crash de arborist" que motivó la nota era un síntoma de usar npm en un repo
+de pnpm, no un problema del árbol.
 
-### Impacto mientras la deuda esté abierta
-- **Builds no 100% reproducibles:** sin lock versionado, Vercel puede resolver una versión nueva dentro de
-  un rango `^` (hay 5: `@supabase/ssr`, `clsx`, `lucide-react`, `next-themes`, `tailwind-merge`) y romper
-  algo **sin que cambie el código**. El `.npmrc` mitiga la *instalación*, no el *drift de versiones*.
+### Resolución
+1. `pnpm install` → regenera `pnpm-lock.yaml` con las deps faltantes (sin tocar otras versiones).
+2. `pnpm install --frozen-lockfile` verde en local (= lo que corre Vercel).
+3. Borrados `.npmrc` y `package-lock.json` (artefactos npm). Commit del `pnpm-lock.yaml` → Vercel verde.
 
-### Condición de salida
-Cuando el stack se estabilice (TS/Next/React fuera de bleeding-edge): **pinear versiones exactas** (quitar
-los `^`) y/o **versionar `package-lock.json`** (Vercel pasaría a `npm ci`, reproducible y más rápido), una
-vez que arborist deje de crashear al re-resolver.
+### Prevención
+- **Usar PNPM siempre** en este repo (`pnpm add <dep>`), nunca `npm install` → el `pnpm-lock.yaml` queda
+  sincronizado automáticamente.
 
 ### Trazabilidad
-- Relaciona: `package.json`, `.npmrc`, `docs/DEPLOY.md §6`, `DEBT-0006`
+- Relaciona: `pnpm-lock.yaml`, `package.json`, nodemailer (#3 / DEBT-0013), `docs/DEPLOY.md §6`
