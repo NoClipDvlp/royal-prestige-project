@@ -288,6 +288,11 @@ export async function propagateTemplate(templateId: string): Promise<Result> {
   const denied = await requireAdmin();
   if (denied) return denied;
   const supabase = await createSupabaseServerClient();
+  const {
+    data: { user: admin },
+  } = await supabase.auth.getUser();
+  if (!admin) return { ok: false, error: "No autenticado." };
+
   const { data: itemsData } = await supabase
     .from("template_items")
     .select("id, title, category_id, priority, recurrence, time_slot, duration_minutes")
@@ -302,6 +307,8 @@ export async function propagateTemplate(templateId: string): Promise<Result> {
   const userIds = ((act ?? []) as { user_id: string }[]).map((a) => a.user_id);
   if (userIds.length === 0) return { ok: true };
 
+  // 1) UPDATE de campos de items EXISTENTES — respeta lo editado por el distribuidor (customized_at, trigger
+  //    0010) y los borrados; solo asignados activos.
   for (const it of items) {
     const { error } = await supabase
       .from("tasks")
@@ -314,11 +321,61 @@ export async function propagateTemplate(templateId: string): Promise<Result> {
         duration_minutes: it.duration_minutes,
       })
       .eq("template_item_id", it.id)
-      .is("customized_at", null) // respeta lo que el distribuidor editó (lo marca el trigger 0010)
+      .is("customized_at", null)
       .is("deleted_at", null)
       .in("owner_user_id", userIds);
     if (error) return { ok: false, error: error.message };
   }
+
+  // 2) SIEMBRA de items NUEVOS (ADR-0018, revierte el diferido de ADR-0015 §5): inserta las tareas que un
+  //    asignado activo aún NO tiene (patrón de assignTemplate, reusa el motor → el trigger materializa hoy).
+  //    Idempotente: dedup por (owner, template_item_id) sobre TODAS las tareas del template (incl. borradas)
+  //    → no duplica ni resucita lo que el distribuidor quitó. start_date = hoy (no retroactivo).
+  const { data: usersData } = await supabase
+    .from("users")
+    .select("id, distribution_id, role")
+    .in("id", userIds);
+  const owners = ((usersData ?? []) as { id: string; distribution_id: string | null; role: string }[]).filter(
+    (u) => u.role === "distributor" && u.distribution_id,
+  );
+
+  const { data: existing } = await supabase
+    .from("tasks")
+    .select("owner_user_id, template_item_id")
+    .eq("template_id", templateId)
+    .in("owner_user_id", userIds)
+    .not("template_item_id", "is", null);
+  const present = new Set(
+    ((existing ?? []) as { owner_user_id: string; template_item_id: string }[]).map(
+      (r) => `${r.owner_user_id}:${r.template_item_id}`,
+    ),
+  );
+
+  const today = bogotaToday();
+  const seedRows = owners.flatMap((u) =>
+    items
+      .filter((it) => !present.has(`${u.id}:${it.id}`))
+      .map((it) => ({
+        owner_user_id: u.id,
+        distribution_id: u.distribution_id,
+        title: it.title,
+        category_id: it.category_id,
+        priority: it.priority,
+        recurrence: it.recurrence,
+        start_date: today,
+        time_slot: it.time_slot,
+        duration_minutes: it.duration_minutes,
+        origin: "superior",
+        assigned_by_user_id: admin.id,
+        template_id: templateId,
+        template_item_id: it.id,
+      })),
+  );
+  if (seedRows.length) {
+    const { error } = await supabase.from("tasks").insert(seedRows);
+    if (error) return { ok: false, error: error.message };
+  }
+
   revalidatePath("/admin");
   return { ok: true };
 }
