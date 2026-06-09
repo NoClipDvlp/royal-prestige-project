@@ -22,7 +22,15 @@ export async function changeOwnPassword(newPassword: string): Promise<Result> {
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.updateUser({ password: newPassword });
-  if (error) return { ok: false, error: "No se pudo cambiar la contraseña." };
+  if (error) {
+    // ERROR 5 (ADR-0022): GoTrue rechaza reusar la contraseña actual (code 'same_password',
+    // "New password should be different from the old password") → mensaje didáctico en vez de genérico.
+    const code = (error as { code?: string }).code ?? "";
+    if (code === "same_password" || /same.?password|different from the old/i.test(error.message)) {
+      return { ok: false, error: "No puedes reutilizar tu contraseña anterior. Elige una distinta." };
+    }
+    return { ok: false, error: "No se pudo cambiar la contraseña." };
+  }
 
   // Limpiar el flag forzado en AMBAS fuentes (columna = fuente de verdad del middleware + app_metadata = respaldo).
   // service_role sobre el PROPIO id: el trigger BLOQUEA al usuario que se limpia a sí mismo (auth.uid() no null);
