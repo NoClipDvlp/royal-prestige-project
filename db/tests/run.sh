@@ -69,5 +69,6 @@ echo "== tests user delete (32) =="; run "$HERE/32_user_delete.sql"
 echo "== tests weekly multi-día (33) =="; run "$HERE/33_weekly_multiday.sql"
 echo "== tests kpi excluye borradas (34) =="; run "$HERE/34_kpi_excludes_deleted.sql"
 echo "== tests must_set_password (35) =="; run "$HERE/35_must_set_password.sql"
+echo "== tests siembra propagación (36) =="; run "$HERE/36_propagate_seed.sql"
 
 echo "RESULT=GREEN"
