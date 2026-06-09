@@ -134,6 +134,15 @@ sesión hasta confirmar (la app ya muestra "Revisa tu email" tras registrarse). 
 de **Confirm signup** y **Reset password** si quieres personalizarlas; sus enlaces deben apuntar al
 flujo `/auth/callback` (recovery → `?next=/auth/reset?mode=update`).
 
+**Custom SMTP (necesario para #2 reset y #3 alta).** **Supabase → Authentication → SMTP Settings** →
+activa **custom SMTP** con el buzón de Workspace:
+- Host `smtp.gmail.com`, Port `465`, User `info@pistacore.com`, Password = **app-password** de Workspace
+  (Google Account → Security → App passwords; requiere 2FA), Sender `info@pistacore.com`.
+- Sin esto, el correo de **recuperación de contraseña** (#2, "¿olvidaste tu contraseña?") **no se envía**.
+- ⚠ **URL Configuration** (Authentication → URL Configuration): **Site URL** = la URL de Vercel y añade a
+  **Redirect URLs** el callback `https://<tu-app>/auth/callback` (+ `http://localhost:3000/auth/callback`
+  en local). Lo exigen tanto el recovery (#2) como el `generateLink` del correo de alta (#3).
+
 ---
 
 ## 6. Variables de entorno
@@ -144,9 +153,22 @@ NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 # Server-only (panel admin: alta/reset de usuarios vía API admin de GoTrue). NO lleva prefijo NEXT_PUBLIC.
 SUPABASE_SERVICE_ROLE_KEY=<service-role-secret-key>
+# SMTP del correo de alta (#3) — Workspace, FROM info@pistacore.com. Server-only (nodemailer, runtime Node).
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USER=info@pistacore.com
+SMTP_PASS=<workspace-app-password>
+SMTP_FROM=Pistacore <info@pistacore.com>
 ```
 **Vercel (Project → Settings → Environment Variables):** las dos `NEXT_PUBLIC_*` (Production + Preview)
-**y** `SUPABASE_SERVICE_ROLE_KEY` como variable **server-only** (sin prefijo `NEXT_PUBLIC` → no se expone al cliente).
+**y** `SUPABASE_SERVICE_ROLE_KEY` + las **cinco `SMTP_*`** como variables **server-only** (sin prefijo
+`NEXT_PUBLIC` → no se exponen al cliente). El correo de alta (#3) usa `nodemailer` en un Server Action
+(runtime Node de Vercel). `SMTP_PASS` es el **app-password** de Workspace, no la contraseña del buzón.
+
+> **Build/install:** el repo NO versiona `package-lock.json` (Vercel hace `npm install` fresco) y trae
+> `.npmrc` con `legacy-peer-deps=true` (árbol bleeding-edge React 19 / Next 16 / TS 6). ⚠ **DEUDA:**
+> `nodemailer` tiene avisos de seguridad abiertos (sin versión parcheada aún); el uso es controlado
+> (envelope fijo, único destinatario validado, sin entradas de usuario) → riesgo bajo, a revisar en v2.
 
 ⚠ La **`service_role` / "secret key"** de Supabase: SOLO server-side. La usa `lib/supabase/admin.ts`
 (marcado `import "server-only"`) desde server actions GATEADAS por `assertCallerIsAdmin()`. **Bypasea la RLS**
