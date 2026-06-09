@@ -29,6 +29,7 @@ export function RecurrenceEditDialog({
   const [timeSlot, setTimeSlot] = useState(""); // "HH:MM"; "" = sin hora
   const [recurrence, setRecurrence] = useState<TaskRecurrence>("once");
   const [weekdays, setWeekdays] = useState<number[]>([]);
+  const [onceDate, setOnceDate] = useState(""); // día de la tarea "once"
   const [confirming, setConfirming] = useState(false);
   const [pending, start] = useTransition();
 
@@ -38,6 +39,7 @@ export function RecurrenceEditDialog({
       setTimeSlot(item.timeSlot ? item.timeSlot.slice(0, 5) : ""); // "HH:MM:SS" → "HH:MM"
       setRecurrence(item.recurrence);
       setWeekdays(item.weekdays ?? []);
+      setOnceDate(item.date);
     }
   }, [item]);
 
@@ -53,6 +55,7 @@ export function RecurrenceEditDialog({
         timeSlot: timeSlot ? timeSlot : null, // "" → null (sin hora)
         recurrence,
         weekdays,
+        startDate: recurrence === "once" ? onceDate : undefined, // mover el día (solo once)
       });
       onClose();
     });
@@ -133,6 +136,13 @@ export function RecurrenceEditDialog({
               <span className="px-1 text-[11px] text-muted">Días de la semana</span>
               <WeekdayPicker value={weekdays} onChange={setWeekdays} />
             </div>
+          )}
+
+          {recurrence === "once" && (
+            <label className="space-y-1 block">
+              <span className="px-1 text-[11px] text-muted">Día</span>
+              <Input type="date" value={onceDate} onChange={(e) => setOnceDate(e.target.value)} aria-label="Día de la tarea" />
+            </label>
           )}
         </div>
 

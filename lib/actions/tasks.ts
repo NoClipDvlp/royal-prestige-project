@@ -36,6 +36,7 @@ type EditChanges = {
   categoryId?: string | null;
   recurrence?: TaskRecurrence; // ADR-0019/nota2: editar recurrencia (incl. once→recurrente)
   weekdays?: number[] | null; // días isodow; solo aplica a weekly
+  startDate?: string; // mover el día de una tarea "once" (scope all)
 };
 
 function minusOneDay(isoDate: string): string {
@@ -194,6 +195,13 @@ export async function updateTask(
     if (changes.recurrence !== undefined) {
       seriesPatch.recurrence = changes.recurrence;
       seriesPatch.weekdays = normalizeWeekdays(changes.recurrence, changes.weekdays);
+    }
+    // Mover el día de una tarea "once": cambia start_date y oculta el día viejo (excluded_dates) por si ya
+    // se había materializado, para que no aparezca en dos fechas.
+    if (changes.startDate !== undefined && changes.startDate !== date) {
+      seriesPatch.start_date = changes.startDate;
+      const { data: t } = await supabase.from("tasks").select("excluded_dates").eq("id", taskId).maybeSingle();
+      seriesPatch.excluded_dates = Array.from(new Set([...(((t?.excluded_dates as string[]) ?? [])), date]));
     }
     const { error } = await supabase.from("tasks").update(seriesPatch).eq("id", taskId);
     if (error) return { ok: false, error: error.message };

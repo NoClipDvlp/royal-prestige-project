@@ -43,6 +43,7 @@ export function TaskCreateModal({
   const [end, setEnd] = useState<string>(durationMin ? minToHhmm(startHour * 60 + durationMin) : ""); // "" = sin duración
   const [recurrence, setRecurrence] = useState<TaskRecurrence>("once");
   const [weekdays, setWeekdays] = useState<number[]>([]);
+  const [onceDate, setOnceDate] = useState(date); // día de la tarea "una vez" (cualquier fecha)
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [categoryId, setCategoryId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -54,11 +55,12 @@ export function TaskCreateModal({
     if (!open) return;
     setStart(minToHhmm(startHour * 60));
     setEnd(durationMin ? minToHhmm(startHour * 60 + durationMin) : "");
+    setOnceDate(date);
     setTitle("");
     setError(null);
     const t = setTimeout(() => titleRef.current?.focus(), 50);
     return () => clearTimeout(t);
-  }, [open, startHour, durationMin]);
+  }, [open, startHour, durationMin, date]);
 
   if (!open) return null;
 
@@ -83,7 +85,7 @@ export function TaskCreateModal({
       const res = await createTask({
         title: title.trim(),
         recurrence,
-        startDate: date,
+        startDate: recurrence === "once" ? onceDate : date, // once: el día elegido; recurrente: arranca hoy/visible
         timeSlot: start,
         durationMinutes: endMin != null ? endMin - startMin : null,
         priority,
@@ -185,6 +187,13 @@ export function TaskCreateModal({
             <label className="space-y-1">
               <span className="px-1 text-[11px] text-muted">Días de la semana</span>
               <WeekdayPicker value={weekdays} onChange={setWeekdays} />
+            </label>
+          )}
+
+          {recurrence === "once" && (
+            <label className="space-y-1">
+              <span className="px-1 text-[11px] text-muted">Día</span>
+              <Input type="date" value={onceDate} onChange={(e) => setOnceDate(e.target.value)} aria-label="Día de la tarea" />
             </label>
           )}
 
