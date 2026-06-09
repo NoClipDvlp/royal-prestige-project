@@ -4,6 +4,7 @@ import { useState, useTransition, type FormEvent } from "react";
 import { GlassCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { adminCreateUser } from "@/lib/actions/admin";
 
 /** Alta de usuario con contraseña TEMPORAL (sin invitación por email mientras DEBT-0008/SMTP siga abierta). */
@@ -39,6 +40,7 @@ export function CreateUser() {
       <form onSubmit={handle} className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <Input
           placeholder="Nombre"
+          aria-label="Nombre del usuario"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           required
@@ -47,13 +49,15 @@ export function CreateUser() {
         <Input
           type="email"
           placeholder="Email"
+          aria-label="Email del usuario"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
           autoComplete="off"
         />
-        <Input
+        <PasswordInput
           placeholder="Contraseña temporal"
+          aria-label="Contraseña temporal"
           value={pwd}
           onChange={(e) => setPwd(e.target.value)}
           required

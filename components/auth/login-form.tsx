@@ -4,6 +4,8 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/field";
+import { PasswordInput } from "@/components/ui/password-input";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export function LoginForm() {
@@ -53,22 +55,27 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleLogin} className="space-y-3">
-      <Input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-        autoComplete="email"
-      />
-      <Input
-        type="password"
-        placeholder="Contraseña"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-        autoComplete="current-password"
-      />
+      <Field label="Correo" htmlFor="login-email">
+        <Input
+          id="login-email"
+          type="email"
+          placeholder="tucorreo@ejemplo.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+        />
+      </Field>
+      <Field label="Contraseña" htmlFor="login-password">
+        <PasswordInput
+          id="login-password"
+          placeholder="Tu contraseña"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          autoComplete="current-password"
+        />
+      </Field>
       {error ? <p className="text-xs text-red-500">{error}</p> : null}
       {resetMsg ? <p className="text-xs text-positive">{resetMsg}</p> : null}
       <Button type="submit" className="w-full" disabled={loading}>

@@ -30,6 +30,10 @@
   /* Elevación de 2 niveles: 1 = sutil (botones/pills/sub-cards/bloques); 2 = flotante (tarjetas glass). */
   --shadow-1: 0 1px 2px rgba(28, 35, 71, 0.06), 0 2px 6px -2px rgba(28, 35, 71, 0.10);
   --glass-shadow: 0 12px 34px -14px rgba(28, 35, 71, 0.30), 0 2px 8px -3px rgba(28, 35, 71, 0.12);
+  /* Semáforo de estado 0/50/100 (pastel, no chillón) — #8 QA Tanda 2. */
+  --status-0: #e08a7d;   /* rojo terracota suave */
+  --status-50: #e0a85c;  /* ámbar suave */
+  --status-100: #4fb497; /* verde (hermano del --positive) */
 }
 
 .dark {
@@ -46,6 +50,9 @@
   --glass-border: rgba(255, 255, 255, 0.12);   /* borde blanco sutil en oscuro */
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.40), 0 2px 8px -2px rgba(0, 0, 0, 0.50);
   --glass-shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.65), 0 2px 10px -3px rgba(0, 0, 0, 0.5);
+  --status-0: #c87b70;
+  --status-50: #cf9a52;
+  --status-100: #4fc59a;
 }
 
 html, body { height: 100%; }

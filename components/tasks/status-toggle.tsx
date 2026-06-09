@@ -46,10 +46,12 @@ export function StatusToggle({
           key={p}
           type="button"
           onClick={() => set(p)}
+          // #8 semáforo: el pill ACTIVO usa su color (0=rojo, 50=ámbar, 100=verde; pastel) con texto blanco.
+          style={optimistic === p ? { backgroundColor: `var(--status-${p})` } : undefined}
           className={cn(
             "rounded-full font-medium transition",
             compact ? "h-6 min-w-0 flex-1 px-1.5 text-[10px]" : "h-7 px-2.5 text-[11px]",
-            optimistic === p ? "bg-accent text-accent-fg elev-1" : "glass text-muted hover:text-fg",
+            optimistic === p ? "text-white elev-1" : "glass text-muted hover:text-fg",
           )}
         >
           {p}%
