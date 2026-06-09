@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Royal Control — SQL CONSOLIDADO DE DEPLOY (GENERADO — IDEMPOTENTE, re-ejecutable)
--- Fuente: migraciones + RLS del repo. Orden: 0000 → policies → 0001 → 0002 → 0003 → 0004 → 0005 → 0006 → 0008 → 0009 → 0010 → 0011 → 0012 → 0013 → 0014.
+-- Fuente: migraciones + RLS del repo. Orden: 0000 → policies → 0001 → 0002 → 0003 → 0004 → 0005 → 0006 → 0008 → 0009 → 0010 → 0011 → 0012 → 0013 → 0014 → 0015.
 -- ⚠ Re-ejecutable sin importar el estado (corre 2 veces sin error): create ... if not exists,
 --    do-guards de enums, create or replace trigger/view/function, drop policy if exists + create,
 --    add column if not exists, drop constraint if exists + add. NO cambia el diseño (DEBT-0011).
@@ -1743,3 +1743,18 @@ end $$;
 create or replace trigger trg_users_must_set_password
   before update on public.users
   for each row execute function public.forbid_must_set_password_change();
+
+-- =====================================================================
+-- >>> db/migrations/0015_template_item_emoji.sql
+-- =====================================================================
+-- 0015_template_item_emoji.sql — ADR-0024: emoji por ítem de plantilla.
+--
+-- El admin elige/edita un emoji por ítem de plantilla; se muestra en el cronograma IMPRESO de la plantilla
+-- (no en la del distribuidor — "solo de plantillas"). Aditivo: columna nullable + CHECK de longitud para
+-- evitar texto largo. NO toca el motor (is_task_due/materialize), ni la RLS (template_items_admin = for all),
+-- ni los triggers. Idempotente vía consolidado (add column → if not exists; drop constraint + add).
+
+alter table public.template_items add column if not exists emoji text;
+
+alter table public.template_items drop constraint if exists chk_template_item_emoji;
+alter table public.template_items add constraint chk_template_item_emoji check (emoji is null or char_length(emoji) <= 16);
