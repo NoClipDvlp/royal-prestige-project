@@ -272,7 +272,7 @@ function ConfirmModal({
   const warnFor = (t: string, u: string) => confirm.warnings.filter((w) => w.userId === u);
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
       onPointerDown={(e) => e.target === e.currentTarget && onCancel()}
     >
       <GlassCard className="w-full max-w-md p-6">

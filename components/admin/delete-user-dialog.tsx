@@ -34,7 +34,7 @@ export function DeleteUserDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
       <GlassCard className="w-full max-w-sm p-6">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-red-500">
