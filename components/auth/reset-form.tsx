@@ -4,6 +4,8 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/field";
+import { PasswordInput } from "@/components/ui/password-input";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export function ResetForm({ mode }: { mode: "request" | "update" }) {
@@ -44,15 +46,17 @@ export function ResetForm({ mode }: { mode: "request" | "update" }) {
   if (mode === "update") {
     return (
       <form onSubmit={handleUpdate} className="space-y-3">
-        <Input
-          type="password"
-          placeholder="Nueva contraseña (mín. 8)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          minLength={8}
-          autoComplete="new-password"
-        />
+        <Field label="Nueva contraseña" htmlFor="rs-pwd" hint="Mínimo 8 caracteres.">
+          <PasswordInput
+            id="rs-pwd"
+            placeholder="Nueva contraseña"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+            autoComplete="new-password"
+          />
+        </Field>
         {error ? <p className="text-xs text-red-500">{error}</p> : null}
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? "Guardando…" : "Guardar contraseña"}
@@ -63,14 +67,17 @@ export function ResetForm({ mode }: { mode: "request" | "update" }) {
 
   return (
     <form onSubmit={handleRequest} className="space-y-3">
-      <Input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-        autoComplete="email"
-      />
+      <Field label="Correo" htmlFor="rs-email">
+        <Input
+          id="rs-email"
+          type="email"
+          placeholder="tucorreo@ejemplo.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+        />
+      </Field>
       {msg ? <p className="text-xs text-positive">{msg}</p> : null}
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? "Enviando…" : "Enviar enlace"}

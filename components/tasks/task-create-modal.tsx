@@ -105,13 +105,16 @@ export function TaskCreateModal({
         </div>
 
         <form onSubmit={handle} className="space-y-3">
-          <Input
-            ref={titleRef}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="¿Qué hay que hacer?"
-            aria-label="Título de la tarea"
-          />
+          <label className="space-y-1">
+            <span className="px-1 text-[11px] text-muted">Título</span>
+            <Input
+              ref={titleRef}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="¿Qué hay que hacer?"
+              aria-label="Título de la tarea"
+            />
+          </label>
 
           <div className="grid grid-cols-2 gap-3">
             <label className="space-y-1">
