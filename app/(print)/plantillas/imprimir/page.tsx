@@ -8,6 +8,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth/server";
 import { bogotaToday, weekStartMonday } from "@/lib/dashboard/week";
 import { addDays, isValidIsoDate } from "@/lib/tasks/dates";
+import { DOW, dayNum, printedLabel, weekRange } from "@/lib/tasks/print-format";
 import { PrintSchedule } from "@/components/tasks/print-schedule";
 import { PrintStylePanel } from "@/components/tasks/print-style-panel";
 import type { DayItem, TaskPriority, TaskRecurrence } from "@/lib/tasks/types";
@@ -49,16 +50,6 @@ async function loadTemplate(supabase: DB, id: string) {
     .eq("template_id", id)
     .order("time_slot", { nullsFirst: false });
   return { name: (tpl.name as string) ?? "Plantilla", items: (items ?? []) as unknown as ItemRow[] };
-}
-
-const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
-const dnum = (iso: string): number => Number.parseInt(iso.slice(8, 10), 10);
-const mIdx = (iso: string): number => Number.parseInt(iso.slice(5, 7), 10) - 1;
-const yOf = (iso: string): string => iso.slice(0, 4);
-function weekRange(weekStart: string, weekEnd: string): string {
-  return mIdx(weekStart) === mIdx(weekEnd)
-    ? `Semana del ${dnum(weekStart)} al ${dnum(weekEnd)} de ${MESES[mIdx(weekEnd)]} de ${yOf(weekEnd)}`
-    : `Semana del ${dnum(weekStart)} de ${MESES[mIdx(weekStart)]} al ${dnum(weekEnd)} de ${MESES[mIdx(weekEnd)]} de ${yOf(weekEnd)}`;
 }
 
 export default async function ImprimirPlantillaPage({
@@ -106,10 +97,9 @@ export default async function ImprimirPlantillaPage({
     }
   }
 
-  const DOW = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-  const columns = Array.from({ length: 7 }, (_, i) => ({ dow: DOW[i], dnum: dnum(addDays(weekStart, i)), weekend: i >= 5 }));
+  const columns = Array.from({ length: 7 }, (_, i) => ({ dow: DOW[i], dnum: dayNum(addDays(weekStart, i)), weekend: i >= 5 }));
   const rangeLabel = `${weekRange(weekStart, weekEnd)} · Plantilla`;
-  const printedLabel = `Impreso el ${dnum(today)} de ${MESES[mIdx(today)]} de ${yOf(today)} · Royal Control · Pistacore`;
+  const printed = printedLabel(today);
 
   const base = `/plantillas/imprimir?id=${encodeURIComponent(sp.id)}`;
   const prevHref = `${base}&from=${addDays(weekStart, -7)}`;
@@ -117,13 +107,13 @@ export default async function ImprimirPlantillaPage({
 
   return (
     <>
-      <PrintStylePanel prevHref={prevHref} nextHref={nextHref} weekLabel={`${dnum(weekStart)}–${dnum(weekEnd)} ${MESES[mIdx(weekEnd)]}`} />
+      <PrintStylePanel prevHref={prevHref} nextHref={nextHref} weekLabel={`${dayNum(weekStart)}–${dayNum(weekEnd)}`} />
       <PrintSchedule
         days={days}
         columns={columns}
         title={tpl.name}
         rangeLabel={rangeLabel}
-        printedLabel={printedLabel}
+        printedLabel={printed}
         footnote={sinDia.length ? sinDia.join(" · ") : null}
       />
     </>

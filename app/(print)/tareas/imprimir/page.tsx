@@ -7,20 +7,20 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getUser, getProfile } from "@/lib/auth/server";
 import { bogotaToday, weekStartMonday } from "@/lib/dashboard/week";
 import { addDays, isValidIsoDate } from "@/lib/tasks/dates";
+import { DOW, dayNum, isoDow, longDay, printedLabel, weekRange } from "@/lib/tasks/print-format";
 import { PrintSchedule, type PrintColumn } from "@/components/tasks/print-schedule";
 import { PrintStylePanel } from "@/components/tasks/print-style-panel";
 import type { DayItem, StatusPct, TaskPriority, TaskRecurrence } from "@/lib/tasks/types";
 
 type DB = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 
-type InstRow = {
-  task_id: string; date: string; status_pct: number | null; title: string | null; time_slot: string | null;
-  duration_minutes: number | null; priority: string | null;
-  tasks: TaskEmbed | TaskEmbed[] | null;
-};
 type TaskEmbed = {
   title: string | null; time_slot: string | null; duration_minutes: number | null; priority: string | null;
   recurrence: string | null; weekdays: number[] | null; deleted_at: string | null; excluded_dates: string[] | null;
+};
+type InstRow = {
+  task_id: string; date: string; status_pct: number | null; title: string | null; time_slot: string | null;
+  duration_minutes: number | null; priority: string | null; tasks: TaskEmbed | TaskEmbed[] | null;
 };
 type ProjRow = {
   id: string; title: string | null; time_slot: string | null; duration_minutes: number | null;
@@ -68,14 +68,6 @@ async function loadDayProjection(supabase: DB, date: string): Promise<DayItem[]>
 const loadDayForPrint = (supabase: DB, date: string, today: string): Promise<DayItem[]> =>
   date <= today ? loadDayInstances(supabase, date) : loadDayProjection(supabase, date);
 
-const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
-const DOW = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-const DOW_FULL = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-const dnum = (iso: string): number => Number.parseInt(iso.slice(8, 10), 10);
-const mIdx = (iso: string): number => Number.parseInt(iso.slice(5, 7), 10) - 1;
-const yOf = (iso: string): string => iso.slice(0, 4);
-const isoDow = (iso: string): number => (new Date(`${iso}T00:00:00Z`).getUTCDay() + 6) % 7; // 0=lun…6=dom
-
 export default async function ImprimirPage({ searchParams }: { searchParams: Promise<{ d?: string; view?: string }> }) {
   const user = await getUser();
   if (!user) redirect("/login");
@@ -95,7 +87,7 @@ export default async function ImprimirPage({ searchParams }: { searchParams: Pro
     distName = (dist?.name as string | undefined) ?? null;
   }
   const fullName = (me?.full_name as string | undefined) ?? user.email ?? "";
-  const printedLabel = `Impreso el ${dnum(today)} de ${MESES[mIdx(today)]} de ${yOf(today)} · Royal Control · Pistacore`;
+  const printed = printedLabel(today);
 
   let days: DayItem[][];
   let columns: PrintColumn[];
@@ -105,20 +97,16 @@ export default async function ImprimirPage({ searchParams }: { searchParams: Pro
   if (view === "day") {
     const wd = isoDow(base);
     days = [await loadDayForPrint(supabase, base, today)];
-    columns = [{ dow: DOW[wd], dnum: dnum(base), weekend: wd >= 5 }];
+    columns = [{ dow: DOW[wd], dnum: dayNum(base), weekend: wd >= 5 }];
     title = "Cronograma del día";
-    rangeLabel = [`${DOW_FULL[wd]} ${dnum(base)} de ${MESES[mIdx(base)]} de ${yOf(base)}`, fullName, distName].filter(Boolean).join(" · ");
+    rangeLabel = [longDay(base), fullName, distName].filter(Boolean).join(" · ");
   } else {
     const weekStart = weekStartMonday(base);
     const weekEnd = addDays(weekStart, 6);
     days = await Promise.all(Array.from({ length: 7 }, (_, i) => loadDayForPrint(supabase, addDays(weekStart, i), today)));
-    columns = Array.from({ length: 7 }, (_, i) => ({ dow: DOW[i], dnum: dnum(addDays(weekStart, i)), weekend: i >= 5 }));
+    columns = Array.from({ length: 7 }, (_, i) => ({ dow: DOW[i], dnum: dayNum(addDays(weekStart, i)), weekend: i >= 5 }));
     title = "Cronograma semanal";
-    const sameMonth = mIdx(weekStart) === mIdx(weekEnd);
-    const rangeBase = sameMonth
-      ? `Semana del ${dnum(weekStart)} al ${dnum(weekEnd)} de ${MESES[mIdx(weekEnd)]} de ${yOf(weekEnd)}`
-      : `Semana del ${dnum(weekStart)} de ${MESES[mIdx(weekStart)]} al ${dnum(weekEnd)} de ${MESES[mIdx(weekEnd)]} de ${yOf(weekEnd)}`;
-    rangeLabel = [rangeBase, fullName, distName].filter(Boolean).join(" · ");
+    rangeLabel = [weekRange(weekStart, weekEnd), fullName, distName].filter(Boolean).join(" · ");
   }
 
   const dq = `d=${base}`;
@@ -126,7 +114,7 @@ export default async function ImprimirPage({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <PrintSchedule days={days} columns={columns} title={title} rangeLabel={rangeLabel} printedLabel={printedLabel} />
+      <PrintSchedule days={days} columns={columns} title={title} rangeLabel={rangeLabel} printedLabel={printed} />
       <PrintStylePanel viewHrefs={viewHrefs} />
     </>
   );
