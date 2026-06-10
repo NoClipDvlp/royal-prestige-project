@@ -4,6 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth/server";
 import { PageTitle } from "@/components/page-title";
+import { RefreshButton } from "@/components/metrics/refresh-button";
 import { CargaPremium } from "@/components/metrics/carga-premium";
 import { loadForecast, loadComplianceDrill, buildInsights, forecastBounds } from "@/lib/bi/premium";
 import { bogotaToday } from "@/lib/dashboard/week";
@@ -28,9 +29,12 @@ export default async function CargaPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Link href="/metricas" className="inline-flex w-fit items-center gap-1 text-sm text-muted transition hover:text-fg">
-        <ChevronLeft size={16} /> Ranking
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link href="/metricas" className="inline-flex w-fit items-center gap-1 text-sm text-muted transition hover:text-fg">
+          <ChevronLeft size={16} /> Ranking
+        </Link>
+        <RefreshButton label="Refrescar" />
+      </div>
       <PageTitle title="Carga y cumplimiento" subtitle="Carga por venir + cumplimiento con drill + señales por reglas." />
       <CargaPremium initialForecast={forecastDist} initialCompliance={complianceDist} insights={insights} today={today} />
     </div>

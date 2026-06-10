@@ -3,8 +3,8 @@
 // Server actions del motor de tareas. Bajo RLS con la SESIÓN del usuario (NUNCA service_role):
 // la base de datos hace cumplir owner=self. Listados filtran deleted_at en la query (no en RLS).
 
-import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { revalidatePanels } from "@/lib/actions/revalidate";
 import { getProfile } from "@/lib/auth/server";
 import { bogotaToday } from "@/lib/dashboard/week";
 import { addDays } from "@/lib/tasks/dates";
@@ -43,20 +43,6 @@ function minusOneDay(isoDate: string): string {
   const d = new Date(`${isoDate}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() - 1);
   return d.toISOString().slice(0, 10);
-}
-
-/**
- * ADR-0031: una sola verdad viva en CADA panel. Toda mutación de tarea revalida las superficies que muestran
- * estado de tareas — el home (KPI propio del distribuidor), /tareas, y los paneles de SUPERVISIÓN
- * (/metricas ranking + el perfil del distribuidor /metricas/[userId]). Son páginas dinámicas que leen el
- * estado vivo (compliance_* sobre task_instances), así que esto limpia el Router/Full-Route cache para que
- * cualquier navegación posterior lea la realidad actual, no un estado congelado.
- */
-function revalidatePanels(): void {
-  revalidatePath("/");
-  revalidatePath("/tareas");
-  revalidatePath("/metricas");
-  revalidatePath("/metricas/[userId]", "page");
 }
 
 export async function createTask(input: CreateInput): Promise<ActionResult> {

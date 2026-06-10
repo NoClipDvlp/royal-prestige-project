@@ -6,6 +6,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { revalidatePanels } from "@/lib/actions/revalidate";
 import { getProfile } from "@/lib/auth/server";
 import { bogotaToday } from "@/lib/dashboard/week";
 import { seedStartDate } from "@/lib/tasks/template-seed";
@@ -141,7 +142,7 @@ export async function deleteTemplateItem(id: string): Promise<Result> {
   if (de) return { ok: false, error: de.message };
   const { error } = await supabase.from("template_items").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
-  revalidatePath("/admin");
+  revalidatePanels(); // ADR-0031: soft-borra tareas del distribuidor → refresca también supervisión + home
   return { ok: true };
 }
 
@@ -256,7 +257,7 @@ export async function assignTemplate(templateId: string, userIds: string[]): Pro
       { onConflict: "template_id,user_id" },
     );
   if (ae) return { ok: false, error: ae.message };
-  revalidatePath("/admin");
+  revalidatePanels(); // ADR-0031: materializa/soft-borra tareas del distribuidor → refresca supervisión + home
   return { ok: true };
 }
 
@@ -289,7 +290,7 @@ export async function unassignTemplate(templateId: string, userId: string): Prom
     .eq("template_id", templateId)
     .eq("user_id", userId);
   if (ae) return { ok: false, error: ae.message };
-  revalidatePath("/admin");
+  revalidatePanels(); // ADR-0031: materializa/soft-borra tareas del distribuidor → refresca supervisión + home
   return { ok: true };
 }
 
@@ -440,7 +441,7 @@ export async function propagateTemplate(templateId: string): Promise<Result> {
     if (error) return { ok: false, error: error.message };
   }
 
-  revalidatePath("/admin");
+  revalidatePanels(); // ADR-0031: actualiza/inserta tareas del distribuidor → refresca supervisión + home
   return { ok: true };
 }
 

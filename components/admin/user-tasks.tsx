@@ -1,31 +1,42 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { adminListUserTasks, type AdminTaskRow } from "@/lib/actions/admin";
+import { RC_REFRESH_EVENT } from "@/components/metrics/refresh-button";
 
-/** Vista READ-ONLY de las tareas de un usuario (RLS admin). Se carga al expandir. */
+/** Vista READ-ONLY de las tareas de un usuario (RLS admin). Se carga al expandir y se RE-CARGA al refrescar
+ *  (ADR-0031: es client-fetch → router.refresh no la actualiza; escucha RC_REFRESH_EVENT). */
 export function UserTasks({ userId }: { userId: string }) {
   const [open, setOpen] = useState(false);
-  const [loaded, setLoaded] = useState(false);
   const [rows, setRows] = useState<AdminTaskRow[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
+  const load = useCallback(() => {
+    setErr(null);
+    start(async () => {
+      const r = await adminListUserTasks(userId);
+      if (!r.ok) setErr(r.error ?? "Error");
+      else setRows(r.tasks ?? []);
+    });
+  }, [userId]);
+
+  // Refresco real (RefreshButton): si está expandida, vuelve a pedir las tareas (estado vivo).
+  useEffect(() => {
+    function onRefresh() {
+      if (open) load();
+    }
+    window.addEventListener(RC_REFRESH_EVENT, onRefresh);
+    return () => window.removeEventListener(RC_REFRESH_EVENT, onRefresh);
+  }, [open, load]);
+
+  // Cada apertura RE-CONSULTA (sin gate de cache): si el distribuidor editó/borró/calificó, el admin lo ve
+  // al re-expandir, no un snapshot latcheado (hallazgo del audit ADR-0031).
   function toggle() {
     const next = !open;
     setOpen(next);
-    if (next && !loaded) {
-      setErr(null);
-      start(async () => {
-        const r = await adminListUserTasks(userId);
-        if (!r.ok) setErr(r.error ?? "Error");
-        else {
-          setRows(r.tasks ?? []);
-          setLoaded(true);
-        }
-      });
-    }
+    if (next) load();
   }
 
   return (

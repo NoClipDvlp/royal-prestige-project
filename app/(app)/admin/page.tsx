@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { getUser, requireRole } from "@/lib/auth/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageTitle } from "@/components/page-title";
+import { RefreshButton } from "@/components/metrics/refresh-button";
 import { AdminContentSkeleton } from "@/components/skeletons";
 import { AdminTabs } from "@/components/admin/admin-tabs";
 import { CreateUser } from "@/components/admin/create-user";
@@ -24,7 +25,10 @@ export default async function AdminPage() {
   await requireRole("admin");
   return (
     <div className="flex flex-col gap-5">
-      <PageTitle title="Administración" subtitle="Usuarios, organización y plantillas." />
+      <div className="flex items-start justify-between gap-3">
+        <PageTitle title="Administración" subtitle="Usuarios, organización y plantillas." />
+        <RefreshButton label="Refrescar" />
+      </div>
       <Suspense fallback={<AdminContentSkeleton />}>
         <AdminData />
       </Suspense>

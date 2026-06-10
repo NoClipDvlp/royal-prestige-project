@@ -6,11 +6,15 @@ import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 
+/** Evento global de refresco: los componentes client-fetch (UserTasks, carga-premium…) lo escuchan y
+ *  re-disparan su carga. router.refresh() solo re-renderiza server components → no bastaba para ellos. */
+export const RC_REFRESH_EVENT = "rc:refresh";
+
 /**
- * Refresco LOCAL de métricas (Pulido Tanda 4). router.refresh() re-ejecuta los server components de la
- * RUTA ACTUAL (re-consulta ranking/serie en el server y reconcilia el RSC) SIN recargar la página ni
- * navegar — y preserva el estado de los client components (rango/grano/dimensión seleccionados). El
- * useTransition expone isPending → spinner sutil mientras el RSC se vuelve a resolver.
+ * Refresco LOCAL (ADR-0031): router.refresh() re-ejecuta los server components de la ruta actual SIN recargar
+ * la página, y ADEMÁS dispara RC_REFRESH_EVENT para que los componentes que cargan en el CLIENTE (UserTasks,
+ * carga-premium) vuelvan a pedir sus datos (router.refresh no re-dispara sus fetch). Así admin/auditor ven el
+ * estado vivo tras refrescar, sin quedar con data vieja. useTransition → spinner mientras resuelve.
  */
 export function RefreshButton({ label = "Refrescar métricas" }: { label?: string }) {
   const router = useRouter();
@@ -19,7 +23,12 @@ export function RefreshButton({ label = "Refrescar métricas" }: { label?: strin
     <Button
       variant="secondary"
       size="icon"
-      onClick={() => start(() => router.refresh())}
+      onClick={() =>
+        start(() => {
+          router.refresh();
+          if (typeof window !== "undefined") window.dispatchEvent(new Event(RC_REFRESH_EVENT));
+        })
+      }
       disabled={pending}
       aria-label={label}
       title="Refrescar"

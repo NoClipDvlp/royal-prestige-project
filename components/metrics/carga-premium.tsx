@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { ChevronRight, TrendingUp, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { GlassCard } from "@/components/ui/card";
 import { addDays } from "@/lib/tasks/dates";
 import { fetchForecast, fetchDrill } from "@/lib/bi/actions";
+import { RC_REFRESH_EVENT } from "@/components/metrics/refresh-button";
 import type { ForecastRow, DrillRow, Insight, LoadDimension, ForecastWindow } from "@/lib/bi/premium";
 
 const WINDOWS: { key: ForecastWindow; label: string }[] = [
@@ -60,6 +61,22 @@ export function CargaPremium({
     const b = bounds(w, today);
     startF(async () => setForecast(await fetchForecast({ ...b, dimension: d })));
   }
+
+  // ADR-0031: este componente arranca de props del server (useState) → router.refresh no lo actualiza.
+  // Al refrescar (RefreshButton dispara RC_REFRESH_EVENT) re-pide la carga actual y reinicia el drill al tope.
+  // `globalThis` evita el shadow del state `window`.
+  useEffect(() => {
+    function onRefresh() {
+      const b = bounds(window, today);
+      startF(async () => setForecast(await fetchForecast({ ...b, dimension: dim })));
+      startD(async () => {
+        const rows = await fetchDrill({ ...past, dimension: "distribution" });
+        setTrail([{ label: "Distribuciones", level: "distribution", rows }]);
+      });
+    }
+    globalThis.addEventListener(RC_REFRESH_EVENT, onRefresh);
+    return () => globalThis.removeEventListener(RC_REFRESH_EVENT, onRefresh);
+  }, [window, dim, today, past.dStart, past.dEnd]);
 
   function drillInto(row: DrillRow) {
     const cur = trail[trail.length - 1];
