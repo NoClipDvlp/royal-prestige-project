@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageTitle } from "@/components/page-title";
+import { MsBreadcrumb } from "@/components/ms/ms-breadcrumb";
 import { MsTemplatesManager } from "@/components/ms/templates-manager";
 import type { MsTemplate } from "@/lib/ms/types";
 
@@ -15,6 +16,7 @@ export default async function MsPlantillasPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <MsBreadcrumb items={[{ label: "Plantillas" }]} />
       <PageTitle title="Plantillas de correo" subtitle="Crea y reutiliza plantillas con campos {merge} por destinatario." />
       <MsTemplatesManager templates={templates} />
     </div>

@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageTitle } from "@/components/page-title";
+import { MsBreadcrumb } from "@/components/ms/ms-breadcrumb";
 import { CampaignsManager } from "@/components/ms/campaigns-manager";
 import { processDueScheduled } from "@/lib/ms/campaigns";
 import type { MsCampaign } from "@/lib/ms/types";
@@ -23,6 +24,7 @@ export default async function MsLotesPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <MsBreadcrumb items={[{ label: "Lotes" }]} />
       <PageTitle title="Lotes de envío" subtitle="Arma, prueba, programa y envía campañas (≤100 por lote)." />
       <CampaignsManager
         campaigns={(camps ?? []) as MsCampaign[]}

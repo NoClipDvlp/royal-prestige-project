@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageTitle } from "@/components/page-title";
+import { MsBreadcrumb } from "@/components/ms/ms-breadcrumb";
 import { RecipientsManager } from "@/components/ms/recipients-manager";
 import type { MsDataset, MsRecipient } from "@/lib/ms/types";
 
@@ -24,9 +23,7 @@ export default async function MsDatasetPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="flex flex-col gap-4">
-      <Link href="/ms/destinatarios" className="inline-flex items-center gap-1.5 text-xs text-muted transition hover:text-fg">
-        <ArrowLeft size={14} /> Listas
-      </Link>
+      <MsBreadcrumb items={[{ label: "Destinatarios", href: "/ms/destinatarios" }, { label: (ds as MsDataset).name }]} />
       <PageTitle title={(ds as MsDataset).name} subtitle="Destinatarios de la lista — agrega, edita, duplica o elimina." />
       <RecipientsManager dataset={ds as MsDataset} recipients={(recs ?? []) as MsRecipient[]} />
     </div>

@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageTitle } from "@/components/page-title";
 import { GlassCard } from "@/components/ui/card";
+import { MsBreadcrumb } from "@/components/ms/ms-breadcrumb";
 import { SEND_STATUS_LABEL, type MsSendStatus } from "@/lib/ms/types";
 
 const SEND_TONE: Record<string, string> = {
@@ -31,6 +32,7 @@ export default async function MsLogsPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <MsBreadcrumb items={[{ label: "Registro" }]} />
       <PageTitle title="Registro de envíos" subtitle="Resultado por destinatario (últimos 300)." />
       {rows.length === 0 ? (
         <GlassCard className="p-6 text-center text-sm text-muted">Aún no hay envíos registrados.</GlassCard>

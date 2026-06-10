@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageTitle } from "@/components/page-title";
+import { MsBreadcrumb } from "@/components/ms/ms-breadcrumb";
 import { DatasetsManager } from "@/components/ms/datasets-manager";
 import type { MsDataset } from "@/lib/ms/types";
 
@@ -15,6 +16,7 @@ export default async function MsDestinatariosPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <MsBreadcrumb items={[{ label: "Destinatarios" }]} />
       <PageTitle title="Destinatarios" subtitle="Importa listas desde CSV y gestiona los contactos." />
       <DatasetsManager datasets={datasets} />
     </div>

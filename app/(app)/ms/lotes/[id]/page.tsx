@@ -1,9 +1,8 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageTitle } from "@/components/page-title";
 import { GlassCard } from "@/components/ui/card";
+import { MsBreadcrumb } from "@/components/ms/ms-breadcrumb";
 import { CampaignControls } from "@/components/ms/campaign-controls";
 import { CAMPAIGN_STATUS_LABEL, SEND_STATUS_LABEL, type MsCampaign, type MsSend } from "@/lib/ms/types";
 
@@ -33,9 +32,7 @@ export default async function MsLoteDetail({ params }: { params: Promise<{ id: s
 
   return (
     <div className="flex flex-col gap-4">
-      <Link href="/ms/lotes" className="inline-flex items-center gap-1.5 text-xs text-muted transition hover:text-fg">
-        <ArrowLeft size={14} /> Lotes
-      </Link>
+      <MsBreadcrumb items={[{ label: "Lotes", href: "/ms/lotes" }, { label: "Detalle" }]} />
       <div className="flex items-start justify-between gap-3">
         <PageTitle title="Detalle del lote" subtitle={`${CAMPAIGN_STATUS_LABEL[campaign.status]} · ${campaign.total_count} destinatarios`} />
         <CampaignControls id={campaign.id} status={campaign.status} />
