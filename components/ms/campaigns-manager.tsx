@@ -350,8 +350,8 @@ function ScheduleModal({ campaignId, onClose, onSaved }: { campaignId: string; o
           <Input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
         </label>
         <p className="mt-2 text-[11px] text-muted">
-          Se enviará <strong>al abrir Lotes después de la hora programada</strong>. No es envío desatendido
-          (que llegará en v2): si nadie abre la sección tras esa hora, el lote espera.
+          Se enviará <strong>automáticamente a la hora programada</strong> (envío desatendido): el sistema
+          procesa los lotes vencidos cada pocos minutos, aunque no estés en la app.
         </p>
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>

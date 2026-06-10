@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ClipboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { FileText, Plus, Copy, Pencil, Trash2, X } from "lucide-react";
 import { GlassCard, ModalCard } from "@/components/ui/card";
@@ -15,6 +15,7 @@ import {
 } from "@/lib/ms/templates";
 import { extractTokens, renderHtmlBody, renderSubject } from "@/lib/ms/render";
 import { sanitizeHtml } from "@/lib/ms/sanitize";
+import { uploadMsAsset } from "@/lib/ms/assets";
 import type { MsTemplate } from "@/lib/ms/types";
 
 /** CRUD de plantillas MS: lista + crear/editar (con preview de merge) + duplicar + eliminar. */
@@ -161,6 +162,29 @@ function TemplateEditor({
     });
   }
 
+  // ADR-0032: pegar una imagen → subir a Storage (ms_assets, no base64) → insertar <img src> en el cursor.
+  async function onPasteBody(e: ClipboardEvent<HTMLTextAreaElement>) {
+    const imgItem = Array.from(e.clipboardData.items).find((i) => i.type.startsWith("image/"));
+    if (!imgItem) return; // texto normal → pega como siempre
+    e.preventDefault();
+    const file = imgItem.getAsFile();
+    if (!file) return;
+    const ta = e.currentTarget;
+    const start = ta.selectionStart ?? body.length;
+    const end = ta.selectionEnd ?? body.length;
+    const fd = new FormData();
+    fd.append("file", file);
+    toast("Subiendo imagen…");
+    const r = await uploadMsAsset(fd);
+    if (!r.ok || !r.url) {
+      toast(r.error ?? "No se pudo subir la imagen.", "error");
+      return;
+    }
+    const tag = `<img src="${r.url}" alt="" style="max-width:100%" />`;
+    setBody((prev) => prev.slice(0, start) + tag + prev.slice(end));
+    toast("Imagen insertada.");
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
@@ -190,9 +214,11 @@ function TemplateEditor({
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
+              onPaste={onPasteBody}
               rows={8}
               className="w-full rounded-2xl border border-white/70 bg-white/50 px-4 py-2.5 font-mono text-xs text-fg outline-none transition focus:ring-2 focus:ring-accent/40 dark:border-white/10 dark:bg-white/5"
             />
+            <p className="px-1 text-[10px] text-muted">Tip: pega una imagen (Ctrl/Cmd+V) y se sube e inserta como &lt;img&gt; automáticamente.</p>
           </label>
 
           {tokens.length > 0 && (
