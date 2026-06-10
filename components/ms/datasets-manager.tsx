@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { toast } from "@/lib/toast";
-import { parseCsvFile, guessEmailField, buildRecipients, type ParsedCsv } from "@/lib/ms/csv";
+import { parseCsvFile, guessEmailField, buildRecipients, cleanRows, isValidEmail } from "@/lib/ms/csv";
 import { createDataset, deleteDataset } from "@/lib/ms/datasets";
 import type { MsDataset } from "@/lib/ms/types";
 
@@ -105,7 +105,8 @@ export function DatasetsManager({ datasets }: { datasets: MsDataset[] }) {
 
 function DatasetImporter({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [parsed, setParsed] = useState<ParsedCsv | null>(null);
+  const [headers, setHeaders] = useState<string[]>([]);
+  const [rows, setRows] = useState<Record<string, string>[]>([]); // editable antes de guardar (#1)
   const [fileName, setFileName] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [emailField, setEmailField] = useState("");
@@ -120,24 +121,31 @@ function DatasetImporter({ onClose, onSaved }: { onClose: () => void; onSaved: (
         setParseError("El archivo no tiene filas o cabeceras legibles.");
         return;
       }
-      setParsed(p);
+      const cleaned = cleanRows(p.headers, p.rows); // #1: Title Case nombres + trim + hora canónica
+      setHeaders(p.headers);
+      setRows(cleaned);
       setFileName(file.name);
       setName(file.name.replace(/\.csv$/i, ""));
-      setEmailField(guessEmailField(p.headers, p.rows));
+      setEmailField(guessEmailField(p.headers, cleaned));
     } catch {
       setParseError("No se pudo leer el CSV. Verifica el formato.");
     }
   }
 
-  const summary = parsed && emailField ? buildRecipients(parsed.rows, emailField) : null;
+  function setCell(rowIdx: number, header: string, value: string) {
+    setRows((rs) => rs.map((row, j) => (j === rowIdx ? { ...row, [header]: value } : row)));
+  }
+
+  const loaded = headers.length > 0;
+  const summary = loaded && emailField ? buildRecipients(rows, emailField) : null;
   const validCount = summary ? summary.recipients.filter((r) => r.valid).length : 0;
 
   function save() {
-    if (!parsed || !emailField || !summary) return;
+    if (!loaded || !emailField || !summary) return;
     start(async () => {
       const r = await createDataset({
         name,
-        columns: { fields: parsed.headers, emailField },
+        columns: { fields: headers, emailField },
         recipients: summary.recipients,
         sourceFilename: fileName,
       });
@@ -175,7 +183,7 @@ function DatasetImporter({ onClose, onSaved }: { onClose: () => void; onSaved: (
               if (f) void onFile(f);
             }}
           />
-          {!parsed ? (
+          {!loaded ? (
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
@@ -195,7 +203,7 @@ function DatasetImporter({ onClose, onSaved }: { onClose: () => void; onSaved: (
                 <label className="block space-y-1">
                   <span className="px-1 text-[11px] text-muted">Columna de correo</span>
                   <Select className="w-full" value={emailField} onChange={(e) => setEmailField(e.target.value)}>
-                    {parsed.headers.map((h) => (
+                    {headers.map((h) => (
                       <option key={h} value={h}>
                         {h}
                       </option>
@@ -206,17 +214,18 @@ function DatasetImporter({ onClose, onSaved }: { onClose: () => void; onSaved: (
 
               {summary && (
                 <p className="text-xs text-muted">
-                  {parsed.rows.length} filas → <span className="text-fg">{validCount} válidos</span>
+                  {rows.length} filas → <span className="text-fg">{validCount} válidos</span>
                   {summary.invalid > 0 && <span className="text-red-500"> · {summary.invalid} inválidos</span>}
                   {summary.duplicates > 0 && <span> · {summary.duplicates} duplicados omitidos</span>}
+                  {" · "}limpieza aplicada (nombres, espacios, hora); edítala abajo si hace falta.
                 </p>
               )}
 
-              <div className="overflow-x-auto rounded-2xl border border-white/60 dark:border-white/10">
+              <div className="max-h-72 overflow-auto rounded-2xl border border-white/60 dark:border-white/10">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-white/50 text-muted dark:bg-white/5">
+                  <thead className="sticky top-0 bg-white/70 text-muted backdrop-blur dark:bg-[#10131c]">
                     <tr>
-                      {parsed.headers.map((h) => (
+                      {headers.map((h) => (
                         <th key={h} className={`px-3 py-2 font-medium ${h === emailField ? "text-accent" : ""}`}>
                           {h}
                         </th>
@@ -224,16 +233,20 @@ function DatasetImporter({ onClose, onSaved }: { onClose: () => void; onSaved: (
                     </tr>
                   </thead>
                   <tbody>
-                    {parsed.rows.slice(0, 8).map((r, i) => {
-                      const badEmail = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((r[emailField] ?? "").trim());
+                    {rows.map((r, i) => {
+                      const badEmail = !isValidEmail(r[emailField] ?? "");
                       return (
                         <tr key={i} className="border-t border-white/40 dark:border-white/10">
-                          {parsed.headers.map((h) => (
-                            <td
-                              key={h}
-                              className={`px-3 py-1.5 text-fg ${h === emailField && badEmail ? "text-red-500" : ""}`}
-                            >
-                              {r[h]}
+                          {headers.map((h) => (
+                            <td key={h} className="p-0">
+                              <input
+                                value={r[h] ?? ""}
+                                onChange={(e) => setCell(i, h, e.target.value)}
+                                aria-label={`${h} fila ${i + 1}`}
+                                className={`w-full bg-transparent px-3 py-1.5 text-xs outline-none transition focus:bg-accent/5 ${
+                                  h === emailField && badEmail ? "text-red-500" : "text-fg"
+                                }`}
+                              />
                             </td>
                           ))}
                         </tr>
@@ -241,9 +254,6 @@ function DatasetImporter({ onClose, onSaved }: { onClose: () => void; onSaved: (
                     })}
                   </tbody>
                 </table>
-                {parsed.rows.length > 8 && (
-                  <p className="px-3 py-2 text-[11px] text-muted">…y {parsed.rows.length - 8} filas más</p>
-                )}
               </div>
             </>
           )}
@@ -255,7 +265,7 @@ function DatasetImporter({ onClose, onSaved }: { onClose: () => void; onSaved: (
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button disabled={pending || !parsed || !name.trim() || validCount === 0} onClick={save}>
+          <Button disabled={pending || !loaded || !name.trim() || validCount === 0} onClick={save}>
             Guardar lista
           </Button>
         </div>
