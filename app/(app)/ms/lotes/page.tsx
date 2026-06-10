@@ -9,7 +9,8 @@ export type BuilderDataset = { id: string; name: string; recipient_count: number
 export type BuilderTemplate = { id: string; name: string; subject: string };
 
 export default async function MsLotesPage() {
-  // Dispatch oportunista de lotes programados vencidos del propio usuario (usuario activo; sin cron/service_role).
+  // Dispatch oportunista (complemento). El envío DESATENDIDO de v1 llega vía cron server-only (ADR-0029);
+  // este pase cubre al usuario activo y comparte idempotencia (lock + unique), así no hay doble envío.
   await processDueScheduled();
 
   const supabase = await createSupabaseServerClient();

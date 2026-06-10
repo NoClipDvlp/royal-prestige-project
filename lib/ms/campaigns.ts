@@ -239,7 +239,9 @@ export async function scheduleCampaign(campaignId: string, scheduledAtIso: strin
 }
 
 /** Dispatch OPORTUNISTA: envía los lotes 'scheduled' vencidos DEL PROPIO usuario (se llama al abrir /ms/lotes).
- *  Cubre al usuario activo sin cron ni service_role. El dispatch desatendido (offline) queda como deuda infra. */
+ *  Cubre al usuario activo sin cron ni service_role. ADR-0029 revierte la dirección: el envío DESATENDIDO
+ *  (offline) es objetivo de v1 vía un cron server-only con secreto (en preparación); este oportunista queda
+ *  como complemento inofensivo (misma idempotencia: lock scheduled→sending + unique(campaign,email)). */
 export async function processDueScheduled(): Promise<void> {
   try {
     await assertMsEnabled();
