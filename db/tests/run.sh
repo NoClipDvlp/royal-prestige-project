@@ -89,5 +89,7 @@ echo "== test seedStartDate ADR-0028 (TS) =="
 node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import "$HERE/ts-register.mjs" "$HERE/seed_start_date.test.ts"
 echo "== test sanitizeHtml ADR-0032 (TS) =="
 node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import "$HERE/ts-register.mjs" "$HERE/sanitize.test.ts"
+echo "== test dashboard auditor ADR-0033 (TS) =="
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import "$HERE/ts-register.mjs" "$HERE/dashboard.test.ts"
 
 echo "RESULT=GREEN"

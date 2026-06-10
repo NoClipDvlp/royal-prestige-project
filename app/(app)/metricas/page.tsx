@@ -8,8 +8,9 @@ import { PageTitle } from "@/components/page-title";
 import { MetricsSkeleton } from "@/components/skeletons";
 import { RefreshButton } from "@/components/metrics/refresh-button";
 import { ComplianceCard } from "@/components/metrics/compliance-card";
-import { RankingView } from "@/components/metrics/ranking-view";
+import { AuditorDashboard } from "@/components/metrics/auditor-dashboard";
 import { complianceByRanges, rankingByRanges, sparklinesByUser } from "@/lib/metrics/server";
+import { loadHeatmap, teamDistribution, computeMovers, buildDashboardInsights } from "@/lib/bi/dashboard";
 import { bogotaToday } from "@/lib/dashboard/week";
 
 // Métricas (ADR-0012). Role-aware: admin/auditor → ranking comparativo; distribuidor → sus métricas.
@@ -57,7 +58,21 @@ async function MetricsData({ role }: { role: AppRole }) {
       rankingByRanges(supabase, today),
       sparklinesByUser(supabase, today),
     ]);
-    return <RankingView data={ranking} sparklines={sparklines} />;
+    const weekUsers = ranking.week.filter((r) => r.grain === "user");
+    const heatmap = await loadHeatmap(supabase, today, weekUsers.map((r) => ({ id: r.id, name: r.name })));
+    const distribution = teamDistribution(weekUsers);
+    const movers = computeMovers(sparklines, new Map(weekUsers.map((r) => [r.id, r.name])));
+    const insights = buildDashboardInsights(distribution, movers, heatmap);
+    return (
+      <AuditorDashboard
+        ranking={ranking.week}
+        sparklines={sparklines}
+        distribution={distribution}
+        movers={movers}
+        heatmap={heatmap}
+        insights={insights}
+      />
+    );
   }
   // distribuidor (y jd/seller futuros): sus propias métricas (compliance_self) — NO el ranking (gate → 0 filas).
   const compliance = await complianceByRanges(supabase, today);
