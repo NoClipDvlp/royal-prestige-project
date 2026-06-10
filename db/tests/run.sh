@@ -59,6 +59,7 @@ echo "== migración 0015 (template_item emoji) =="; run "$ROOT/db/migrations/001
 echo "== migración 0016 (set_task_status) =="; run "$ROOT/db/migrations/0016_set_task_status.sql"
 echo "== migración 0017 (revoke materialize_day) =="; run "$ROOT/db/migrations/0017_revoke_materialize_day.sql"
 echo "== migración 0018 (módulo MS, ADR-0027) =="; run "$ROOT/db/migrations/0018_ms_module.sql"
+echo "== migración 0019 (BI carga futura, ADR-0030) =="; run "$ROOT/db/migrations/0019_bi_load_forecast.sql"
 echo "== tests de aislamiento (20) =="; run "$HERE/20_isolation_tests.sql"
 echo "== tests auditor labels (21) =="; run "$HERE/21_auditor_labels.sql"
 echo "== tests auth profile (22) =="; run "$HERE/22_auth_profile.sql"
@@ -77,6 +78,7 @@ echo "== tests siembra propagación (36) =="; run "$HERE/36_propagate_seed.sql"
 echo "== tests set_task_status (37) =="; run "$HERE/37_set_task_status.sql"
 echo "== tests revoke materialize_day (38) =="; run "$HERE/38_revoke_materialize_day.sql"
 echo "== tests módulo MS / ADR-0027 (39) =="; run "$HERE/39_ms_module.sql"
+echo "== tests BI carga futura / ADR-0030 (40) =="; run "$HERE/40_bi_load_forecast.sql"
 
 # Test de lógica TS pura (no-DB): seedStartDate (ADR-0028). Node ≥22 corre .ts por type-stripping;
 # el hook ts-register mapea el alias "@/". Falla el harness (set -e) si alguna aserción no cuadra.
