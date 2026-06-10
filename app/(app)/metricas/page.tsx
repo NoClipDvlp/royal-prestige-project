@@ -1,5 +1,7 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { TrendingUp } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getProfile, type AppRole } from "@/lib/auth/server";
 import { PageTitle } from "@/components/page-title";
@@ -27,7 +29,17 @@ export default async function MetricasPage() {
               : "Tu cumplimiento ponderado por prioridad (día / semana / mes)."
           }
         />
-        <RefreshButton />
+        <div className="flex shrink-0 items-center gap-2">
+          {isRanking && (
+            <Link
+              href="/metricas/carga"
+              className="inline-flex items-center gap-1.5 rounded-xl glass elev-1 px-3 py-1.5 text-xs font-medium text-fg transition hover:opacity-90"
+            >
+              <TrendingUp size={14} /> Carga + drill
+            </Link>
+          )}
+          <RefreshButton />
+        </div>
       </div>
       <Suspense fallback={<MetricsSkeleton ranking={isRanking} />}>
         <MetricsData role={role} />
