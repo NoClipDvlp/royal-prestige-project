@@ -45,6 +45,20 @@ function minusOneDay(isoDate: string): string {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * ADR-0031: una sola verdad viva en CADA panel. Toda mutación de tarea revalida las superficies que muestran
+ * estado de tareas — el home (KPI propio del distribuidor), /tareas, y los paneles de SUPERVISIÓN
+ * (/metricas ranking + el perfil del distribuidor /metricas/[userId]). Son páginas dinámicas que leen el
+ * estado vivo (compliance_* sobre task_instances), así que esto limpia el Router/Full-Route cache para que
+ * cualquier navegación posterior lea la realidad actual, no un estado congelado.
+ */
+function revalidatePanels(): void {
+  revalidatePath("/");
+  revalidatePath("/tareas");
+  revalidatePath("/metricas");
+  revalidatePath("/metricas/[userId]", "page");
+}
+
 export async function createTask(input: CreateInput): Promise<ActionResult> {
   const supabase = await createSupabaseServerClient();
   const profile = await getProfile();
@@ -69,8 +83,7 @@ export async function createTask(input: CreateInput): Promise<ActionResult> {
     weekdays: normalizeWeekdays(input.recurrence, input.weekdays), // ADR-0019
   });
   if (error) return { ok: false, error: error.message };
-  revalidatePath("/tareas"); // el trigger de alta materializa la instancia de hoy si due
-  revalidatePath("/"); // refresca la lista de hoy del home (quick-add)
+  revalidatePanels(); // ADR-0031: home + /tareas + supervisión
   return { ok: true };
 }
 
@@ -81,8 +94,10 @@ export async function setStatus(taskId: string, date: string, pct: StatusPct): P
   // tienen instancia). Reemplaza el UPDATE que fallaba en días futuros / huecos del cron.
   const { error } = await supabase.rpc("set_task_status", { p_task_id: taskId, p_date: date, p_pct: pct });
   if (error) return { ok: false, error: error.message };
-  // Sin revalidatePath: el cliente reconcilia con router.refresh() (optimista). La otra ruta refleja en su
-  // próxima navegación (pages dinámicas).
+  // ADR-0031: marcar 0/50/100 mueve el KPI VIVO → revalida home + supervisión (antes no revalidaba nada y
+  // el cumplimiento del distribuidor no se reflejaba en /metricas hasta un refresh manual). El cliente sigue
+  // haciendo router.refresh() optimista para la propia /tareas.
+  revalidatePanels();
   return { ok: true };
 }
 
@@ -111,8 +126,7 @@ export async function duplicateTask(taskId: string): Promise<ActionResult> {
     weekdays: t.weekdays,
   });
   if (error) return { ok: false, error: error.message };
-  revalidatePath("/tareas");
-  revalidatePath("/");
+  revalidatePanels();
   return { ok: true };
 }
 
@@ -123,7 +137,7 @@ export async function softDeleteTask(taskId: string): Promise<ActionResult> {
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", taskId); // RLS: tasks_update self (hard-delete es admin-only)
   if (error) return { ok: false, error: error.message };
-  revalidatePath("/tareas");
+  revalidatePanels();
   return { ok: true };
 }
 
@@ -165,8 +179,7 @@ export async function deleteTask(taskId: string, scope: EditScope, date: string)
     if (error) return { ok: false, error: error.message };
   }
 
-  revalidatePath("/tareas");
-  revalidatePath("/");
+  revalidatePanels();
   return { ok: true };
 }
 
@@ -258,6 +271,6 @@ export async function updateTask(
     if (e2.error) return { ok: false, error: e2.error.message };
   }
 
-  revalidatePath("/tareas");
+  revalidatePanels();
   return { ok: true };
 }
