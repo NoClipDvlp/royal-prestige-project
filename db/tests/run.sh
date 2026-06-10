@@ -79,6 +79,7 @@ echo "== tests set_task_status (37) =="; run "$HERE/37_set_task_status.sql"
 echo "== tests revoke materialize_day (38) =="; run "$HERE/38_revoke_materialize_day.sql"
 echo "== tests módulo MS / ADR-0027 (39) =="; run "$HERE/39_ms_module.sql"
 echo "== tests BI carga futura / ADR-0030 (40) =="; run "$HERE/40_bi_load_forecast.sql"
+echo "== tests dispatch desatendido / ADR-0029 (41) =="; run "$HERE/41_ms_dispatch.sql"
 
 # Test de lógica TS pura (no-DB): seedStartDate (ADR-0028). Node ≥22 corre .ts por type-stripping;
 # el hook ts-register mapea el alias "@/". Falla el harness (set -e) si alguna aserción no cuadra.
