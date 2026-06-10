@@ -8,6 +8,7 @@ import { RefreshButton } from "@/components/metrics/refresh-button";
 import { ComplianceCard } from "@/components/metrics/compliance-card";
 import { DayNav } from "@/components/tasks/day-nav";
 import { TareasBoard } from "@/components/tasks/tareas-board";
+import { MiCarga } from "@/components/metrics/mi-carga";
 import type { TaskCategory } from "@/components/tasks/task-create-modal";
 import { complianceByRanges } from "@/lib/metrics/server";
 import { bogotaToday } from "@/lib/dashboard/week";
@@ -130,6 +131,9 @@ export default async function TareasPage({
       <DayNav date={date} today={today} />
       <Suspense key={date} fallback={<BoardSkeleton />}>
         <TareasData date={date} isToday={isToday} hasInstances={hasInstances} />
+      </Suspense>
+      <Suspense fallback={<SkeletonCard className="h-32" />}>
+        <MiCarga />
       </Suspense>
       {isToday && (
         <Suspense fallback={<SkeletonCard className="h-24" />}>

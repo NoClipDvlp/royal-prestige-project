@@ -3,12 +3,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getProfile } from "@/lib/auth/server";
+import { getProfile, type AppRole } from "@/lib/auth/server";
 import { GlassCard } from "@/components/ui/card";
 import { ProfileSkeleton } from "@/components/skeletons";
 import { RefreshButton } from "@/components/metrics/refresh-button";
 import { TrendChart } from "@/components/metrics/trend-chart";
 import { BreakdownList } from "@/components/metrics/breakdown-list";
+import { LiveTasks } from "@/components/metrics/live-tasks";
 import { breakdownByDims, fetchLabel, seriesByBuckets } from "@/lib/metrics/server";
 import { bogotaToday } from "@/lib/dashboard/week";
 
@@ -31,13 +32,13 @@ export default async function ProfilePage({ params }: { params: Promise<{ userId
         <RefreshButton />
       </div>
       <Suspense fallback={<ProfileSkeleton />}>
-        <ProfileData userId={userId} />
+        <ProfileData userId={userId} role={role} />
       </Suspense>
     </div>
   );
 }
 
-async function ProfileData({ userId }: { userId: string }) {
+async function ProfileData({ userId, role }: { userId: string; role: AppRole }) {
   const supabase = await createSupabaseServerClient();
   const today = bogotaToday();
 
@@ -57,6 +58,8 @@ async function ProfileData({ userId }: { userId: string }) {
 
       <TrendChart series={series} />
       <BreakdownList data={breakdown} />
+      {/* ADR-0031: estado VIVO de las tareas (admin; auditor ve agregados por la frontera PII). */}
+      <LiveTasks userId={userId} canSeeDetail={role === "admin"} />
     </>
   );
 }
