@@ -60,6 +60,7 @@ echo "== migración 0016 (set_task_status) =="; run "$ROOT/db/migrations/0016_se
 echo "== migración 0017 (revoke materialize_day) =="; run "$ROOT/db/migrations/0017_revoke_materialize_day.sql"
 echo "== migración 0018 (módulo MS, ADR-0027) =="; run "$ROOT/db/migrations/0018_ms_module.sql"
 echo "== migración 0019 (BI carga futura, ADR-0030) =="; run "$ROOT/db/migrations/0019_bi_load_forecast.sql"
+echo "== migración 0020 (bucket ms_assets, ADR-0032) =="; run "$ROOT/db/migrations/0020_ms_assets_bucket.sql"
 echo "== tests de aislamiento (20) =="; run "$HERE/20_isolation_tests.sql"
 echo "== tests auditor labels (21) =="; run "$HERE/21_auditor_labels.sql"
 echo "== tests auth profile (22) =="; run "$HERE/22_auth_profile.sql"
@@ -80,6 +81,7 @@ echo "== tests revoke materialize_day (38) =="; run "$HERE/38_revoke_materialize
 echo "== tests módulo MS / ADR-0027 (39) =="; run "$HERE/39_ms_module.sql"
 echo "== tests BI carga futura / ADR-0030 (40) =="; run "$HERE/40_bi_load_forecast.sql"
 echo "== tests dispatch desatendido / ADR-0029 (41) =="; run "$HERE/41_ms_dispatch.sql"
+echo "== tests bucket ms_assets / ADR-0032 (42) =="; run "$HERE/42_ms_assets.sql"
 
 # Test de lógica TS pura (no-DB): seedStartDate (ADR-0028). Node ≥22 corre .ts por type-stripping;
 # el hook ts-register mapea el alias "@/". Falla el harness (set -e) si alguna aserción no cuadra.

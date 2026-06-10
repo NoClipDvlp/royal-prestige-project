@@ -38,3 +38,23 @@ language sql stable
 as $$
   select (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')::uuid
 $$;
+
+-- storage shim (Supabase) — mínimo para que las migraciones de Storage (0020+, ADR-0032) carguen y se
+-- pueda probar la RLS owner-path. Supabase gestiona estas tablas en prod; aquí emulamos lo justo.
+create schema if not exists storage;
+grant usage on schema storage to anon, authenticated, service_role;
+create table if not exists storage.buckets (
+  id         text primary key,
+  name       text,
+  public     boolean default false,
+  created_at timestamptz default now()
+);
+create table if not exists storage.objects (
+  id         uuid primary key default gen_random_uuid(),
+  bucket_id  text references storage.buckets(id),
+  name       text,
+  owner      uuid,
+  created_at timestamptz default now()
+);
+grant select, insert, update, delete on storage.objects to anon, authenticated, service_role;
+grant select, insert, update, delete on storage.buckets to anon, authenticated, service_role;
