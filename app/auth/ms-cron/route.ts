@@ -1,5 +1,7 @@
 // Cron de ENVÍO DESATENDIDO de lotes programados (ADR-0029, [CORE-APPROVED: ADR-0029]).
-// Disparador externo (cron-job.org ~5 min) → esta route con CRON_SECRET. Vive bajo /auth/* (prefijo público
+// Disparador = VERCEL CRON nativo (Pro): vercel.json '*/5 * * * *' → esta route. Vercel inyecta
+// 'Authorization: Bearer ${CRON_SECRET}' en las llamadas de cron, que validamos abajo (inválido/ausente → 401).
+// (Cron externo cron-job.org con el mismo header = plan B documentado.) Vive bajo /auth/* (prefijo público
 // → sin sesión, sin tocar middleware/routing core).
 //
 // ⚠ service_role CONFINADO a esta route (creado inline; NO un helper compartido — ADR-0029). Es el lugar
@@ -14,6 +16,8 @@ import { sendMsBatch, type MsOutMessage } from "@/lib/ms/mailer";
 import { htmlToText } from "@/lib/ms/render";
 
 export const dynamic = "force-dynamic";
+// Pro permite ventanas largas: varios lotes (≤100 c/u) en una pasada. 300s = tope cómodo.
+export const maxDuration = 300;
 
 function withFooter(html: string, unsubUrl: string): string {
   return `${html}<hr style="margin-top:24px;border:none;border-top:1px solid #e5e7eb"/><p style="font-size:12px;color:#6b7286;line-height:1.5">Recibes este correo como parte de un proceso de reclutamiento. Si no deseas recibir más, <a href="${unsubUrl}" style="color:#6d6cf0">date de baja aquí</a>.</p>`;

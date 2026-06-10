@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/auth/ms-cron", "schedule": "*/5 * * * *" }
+  ]
+}
