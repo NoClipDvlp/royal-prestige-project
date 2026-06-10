@@ -7,6 +7,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { assertMsEnabled } from "@/lib/ms/guard";
+import { sanitizeHtml } from "@/lib/ms/sanitize";
 
 type Result = { ok: boolean; error?: string; id?: string };
 
@@ -27,7 +28,7 @@ export async function createMsTemplate(input: {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("ms_templates")
-    .insert({ owner_user_id: uid, name: input.name.trim(), subject: input.subject.trim(), body_html: input.bodyHtml })
+    .insert({ owner_user_id: uid, name: input.name.trim(), subject: input.subject.trim(), body_html: sanitizeHtml(input.bodyHtml) })
     .select("id")
     .single();
   if (error) return { ok: false, error: error.message };
@@ -47,7 +48,7 @@ export async function updateMsTemplate(
   const patch: Record<string, unknown> = {};
   if (changes.name !== undefined) patch.name = changes.name.trim();
   if (changes.subject !== undefined) patch.subject = changes.subject.trim();
-  if (changes.bodyHtml !== undefined) patch.body_html = changes.bodyHtml;
+  if (changes.bodyHtml !== undefined) patch.body_html = sanitizeHtml(changes.bodyHtml);
   if (Object.keys(patch).length === 0) return { ok: true, id };
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.from("ms_templates").update(patch).eq("id", id);

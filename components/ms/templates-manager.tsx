@@ -14,6 +14,7 @@ import {
   duplicateMsTemplate,
 } from "@/lib/ms/templates";
 import { extractTokens, renderHtmlBody, renderSubject } from "@/lib/ms/render";
+import { sanitizeHtml } from "@/lib/ms/sanitize";
 import type { MsTemplate } from "@/lib/ms/types";
 
 /** CRUD de plantillas MS: lista + crear/editar (con preview de merge) + duplicar + eliminar. */
@@ -143,7 +144,9 @@ function TemplateEditor({
   const tokens = Array.from(new Set([...extractTokens(subject), ...extractTokens(body)]));
   const sample: Record<string, string> = Object.fromEntries(tokens.map((k) => [k, k])); // demo: {Nombre} → "Nombre"
   const previewSubject = renderSubject(subject, sample);
-  const previewBody = renderHtmlBody(body, sample);
+  // ADR-0032: sanea el cuerpo ANTES de renderizarlo en el preview (dangerouslySetInnerHTML) — los valores
+  // de merge ya se escapan en renderHtmlBody; aquí cerramos el markup peligroso del propio template.
+  const previewBody = renderHtmlBody(sanitizeHtml(body), sample);
 
   function save() {
     start(async () => {

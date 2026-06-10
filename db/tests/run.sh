@@ -82,5 +82,7 @@ echo "== tests módulo MS / ADR-0027 (39) =="; run "$HERE/39_ms_module.sql"
 # el hook ts-register mapea el alias "@/". Falla el harness (set -e) si alguna aserción no cuadra.
 echo "== test seedStartDate ADR-0028 (TS) =="
 node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import "$HERE/ts-register.mjs" "$HERE/seed_start_date.test.ts"
+echo "== test sanitizeHtml ADR-0032 (TS) =="
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import "$HERE/ts-register.mjs" "$HERE/sanitize.test.ts"
 
 echo "RESULT=GREEN"
