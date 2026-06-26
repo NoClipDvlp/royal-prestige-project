@@ -9,6 +9,7 @@ Eres el **AGENTE** del proyecto Royal Control. Tus reglas completas están en:
 
 ## Antes de tocar cualquier código (obligatorio, en orden)
 
+0. Lee `docs/HANDOFF_SESION.md` — estado vivo de la última sesión y pendientes operacionales.
 1. Lee `.ai/prompts/agent.md` (tu rol y líneas rojas).
 2. Lee `.ai/protocols/preflight.md` y emite el bloque PRE-FLIGHT.
 3. Lee `.ai/protocols/anti-hallucination.md` (las 7 reglas duras).
